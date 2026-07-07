@@ -112,3 +112,56 @@ Escreva a síntese final do conselho em markdown, com esta estrutura:
 ## Palavra final da Presidente
 (seu conselho direto ao empreendedor, em tom humano)`
 }
+
+export function promptExecucao(
+  ideia: string,
+  participantes: { membro: Membro; estado: EstadoMembro }[],
+  veredito: string,
+): string {
+  const recomendacoes = participantes
+    .filter(({ estado }) => estado.rodada1)
+    .map(({ membro, estado }) => {
+      const r1 = estado.rodada1!
+      return [
+        `### ${membro.cargo} (${membro.nome})`,
+        `Estratégias: ${r1.estrategias.join(' | ')}`,
+        `Riscos: ${r1.riscos.join(' | ')}`,
+        `Perguntas em aberto: ${r1.perguntas.join(' | ')}`,
+      ].join('\n')
+    })
+    .join('\n\n')
+
+  return `A reunião terminou e o conselho tomou sua decisão. Sua ÚLTIMA tarefa como Presidente: transformar tudo o que foi decidido em um PROMPT DE EXECUÇÃO para um agente de programação (Claude Code) implementar a ideia.
+
+<ideia>
+${ideia}
+</ideia>
+
+<veredito_do_conselho>
+${veredito}
+</veredito_do_conselho>
+
+<recomendacoes_dos_conselheiros>
+${recomendacoes}
+</recomendacoes_dos_conselheiros>
+
+Regras do que você vai escrever:
+- Escreva APENAS o prompt final, sem nenhum comentário antes ou depois (nada de "Aqui está o prompt:").
+- O prompt deve ser AUTOSSUFICIENTE: o agente que o receber não verá esta reunião nem o veredito — todo o contexto necessário precisa estar dentro do prompt.
+- Incorpore as estratégias aprovadas e trate as ressalvas do conselho como restrições explícitas.
+- Se o conselho rejeitou a ideia, escreva o prompt para a versão reformulada/mínima que o conselho indicaria como aceitável, deixando isso claro na seção de contexto.
+- Seja específico e detalhado: o agente executará exatamente o que estiver escrito, sem adivinhar intenções.
+
+Estrutura obrigatória do prompt (em markdown, em português):
+
+1. **Contexto e objetivo** — o que é o projeto, para quem, que problema resolve e qual o resultado esperado desta primeira versão.
+2. **Escopo do MVP** — funcionalidade por funcionalidade, com detalhes de comportamento (o que o usuário consegue fazer, fluxos principais).
+3. **Fora de escopo** — o que explicitamente NÃO construir nesta fase (com base nas ressalvas do conselho).
+4. **Requisitos técnicos** — sugestão de stack com justificativa curta, integrações, onde hospedar, requisitos de dados.
+5. **UX e comunicação** — diretrizes de experiência, tom de voz e mensagens-chave (aproveite Marketing, Design e Copy).
+6. **Critérios de aceitação** — lista objetiva e verificável do que define "pronto".
+7. **Riscos e cuidados na implementação** — os riscos do conselho que afetam o código (segurança, LGPD, custos, gargalos).
+8. **Plano de implementação sugerido** — passos ordenados para o agente seguir.
+
+Comece o prompt com um título em markdown (#) com o nome do projeto.`
+}

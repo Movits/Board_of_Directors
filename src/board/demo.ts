@@ -212,8 +212,13 @@ export function criaTransporteDemo(): Transporte {
         votoAtualTexto === 'Aprovar' ? 'aprovar' : votoAtualTexto === 'Rejeitar' ? 'rejeitar' : 'aprovar_com_ressalvas'
       const colegas = [...user.matchAll(/### (.+?) \(/g)].map((m) => m[1])
       const alvos = colegas.sort(() => Math.random() - 0.5).slice(0, Math.min(2, colegas.length))
-      const mudou = Math.random() < 0.2
-      const voto: Voto = mudou ? sorteia(VOTOS_PONDERADOS.filter((v) => v !== votoAtual)) : votoAtual
+      // Convergência gradual rumo ao voto majoritário: quanto mais rodadas,
+      // maior a chance de ceder — simula um debate que caminha para consenso.
+      const rodada = Number(user.match(/Rodada de debate nº (\d+)/)?.[1] ?? '1')
+      const alvoConsenso: Voto = 'aprovar_com_ressalvas'
+      const chanceConvergir = rodada >= 3 ? 0.9 : rodada === 2 ? 0.6 : 0.15
+      const mudou = votoAtual !== alvoConsenso && Math.random() < chanceConvergir
+      const voto: Voto = mudou ? alvoConsenso : votoAtual
       const r: AnaliseDebate = {
         reacoes: alvos.map((n) => ({ para: n, comentario: sorteia(COMENTARIOS_DEBATE)(n) })),
         mudou_voto: mudou,
@@ -225,9 +230,24 @@ export function criaTransporteDemo(): Transporte {
       return JSON.stringify(r)
     },
 
-    async streamada({ user, onDelta }) {
+    async streamada({ user, proposito, onDelta }) {
       const ideia = user.match(/<ideia>\n([\s\S]*?)\n<\/ideia>/)?.[1] ?? 'a ideia apresentada'
-      const texto = `# Veredito do Conselho
+      const texto = proposito === 'prompt' ? textoPromptDemo(ideia) : textoVereditoDemo(ideia)
+
+      const palavras = texto.split(/(?<=\s)/)
+      let completo = ''
+      for (const p of palavras) {
+        completo += p
+        onDelta(p)
+        await espera(6 + Math.random() * 14)
+      }
+      return completo
+    },
+  }
+}
+
+function textoVereditoDemo(ideia: string): string {
+  return `# Veredito do Conselho
 
 **[DEMO]** O conselho recomenda **aprovar com ressalvas**: a ideia "${resumo(ideia)}" tem mérito, mas o avanço deve ser condicionado às validações apontadas abaixo.
 
@@ -258,17 +278,54 @@ Você tem entre as mãos uma ideia com potencial genuíno e um conselho dividido
 
 ---
 *Este veredito foi gerado no modo demonstração. Configure sua chave de API para receber a análise real do conselho.*`
+}
 
-      const palavras = texto.split(/(?<=\s)/)
-      let completo = ''
-      for (const p of palavras) {
-        completo += p
-        onDelta(p)
-        await espera(8 + Math.random() * 18)
-      }
-      return completo
-    },
-  }
+function textoPromptDemo(ideia: string): string {
+  return `# Projeto: ${resumo(ideia)}
+
+**[DEMO]** — este é um exemplo da estrutura do prompt de execução. Com a chave de API configurada, o conselho gera um prompt completo e específico para a sua ideia.
+
+## 1. Contexto e objetivo
+Construir a primeira versão do projeto descrito: "${resumo(ideia)}". O objetivo desta fase é validar a proposta de valor com usuários reais, priorizando velocidade de lançamento sobre completude.
+
+## 2. Escopo do MVP
+- Página inicial apresentando a proposta de valor em uma frase, com chamada para ação principal.
+- Fluxo central do produto de ponta a ponta (versão mínima, sem personalizações avançadas).
+- Cadastro simples de interessados (nome + e-mail) com armazenamento seguro.
+- Painel básico para acompanhar inscrições e uso.
+
+## 3. Fora de escopo
+- Sistema de pagamento (validar demanda primeiro).
+- Aplicativo móvel nativo — web responsivo é suficiente nesta fase.
+- Automações e integrações avançadas.
+
+## 4. Requisitos técnicos
+- Stack enxuta e amplamente suportada (ex.: React + TypeScript no front; serviço gerenciado no back).
+- Instrumentação de analytics desde o dia 1 (eventos de ativação e retenção).
+- Deploy automatizado com preview por branch.
+
+## 5. UX e comunicação
+- Primeiro valor em menos de 2 minutos, sem tutorial.
+- Tom direto e caloroso; evitar jargão técnico.
+
+## 6. Critérios de aceitação
+- [ ] Fluxo principal funciona de ponta a ponta sem erros.
+- [ ] Página carrega em menos de 3 segundos em conexão 4G.
+- [ ] Eventos de analytics registrados para cada etapa do funil.
+
+## 7. Riscos e cuidados na implementação
+- LGPD: coletar apenas dados necessários, com política de privacidade visível.
+- Evitar over-engineering: nada de abstrações para necessidades futuras hipotéticas.
+
+## 8. Plano de implementação sugerido
+1. Estruturar o projeto e o deploy contínuo.
+2. Implementar o fluxo central em versão mínima.
+3. Adicionar cadastro + analytics.
+4. Testes do fluxo completo e ajustes de UX.
+5. Lançar para um grupo pequeno e medir.
+
+---
+*Prompt gerado no modo demonstração.*`
 }
 
 // Garante que todo membro votante tem tema demo definido.

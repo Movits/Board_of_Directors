@@ -50,6 +50,21 @@ export function reuniaoParaMarkdown(reuniao: Reuniao): string {
   }
 
   linhas.push('---', '', reuniao.veredito)
+
+  if (reuniao.promptExecucao) {
+    linhas.push(
+      '',
+      '---',
+      '',
+      '## Prompt de execução (Claude Code)',
+      '',
+      'Cole o bloco abaixo no Claude Code para executar o plano decidido pelo conselho:',
+      '',
+      '````markdown',
+      reuniao.promptExecucao,
+      '````',
+    )
+  }
   return linhas.join('\n')
 }
 

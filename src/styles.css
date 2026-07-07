@@ -376,10 +376,34 @@ input:focus {
   border-color: rgba(226, 87, 76, 0.5);
 }
 
+.aviso-consenso {
+  background: rgba(76, 175, 125, 0.1);
+  border-color: rgba(76, 175, 125, 0.5);
+}
+
 .link {
   color: var(--ouro-claro);
   text-decoration: underline;
   padding: 0;
+}
+
+.link-sutil {
+  font-size: 0.72rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  color: var(--texto-suave);
+}
+
+.entrada-modelo-custom {
+  margin-top: 8px;
+  font-family: ui-monospace, 'Cascadia Code', Menlo, monospace;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+}
+
+.campo-base-url {
+  margin-top: 14px;
 }
 
 /* ── Sala de reunião ──────────────────────────────────────────────────── */
@@ -781,6 +805,61 @@ input:focus {
   content: '▍';
   color: var(--ouro-claro);
   animation: piscar 1s steps(2) infinite;
+}
+
+/* ── Painel do prompt de execução ─────────────────────────────────────── */
+
+.painel-prompt {
+  background: var(--fundo-2);
+  border: 1px solid rgba(74, 127, 212, 0.45);
+  border-radius: var(--raio);
+  padding: 18px 20px;
+}
+
+.painel-prompt-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.painel-prompt-topo h3 {
+  margin: 0;
+}
+
+.painel-prompt-nota {
+  font-size: 0.82rem;
+  color: var(--texto-suave);
+  margin: 8px 0 12px;
+}
+
+.botao-copiar {
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  white-space: nowrap;
+}
+
+.botao-copiar:hover {
+  color: var(--texto);
+  border-color: var(--ouro);
+}
+
+.prompt-texto {
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-family: ui-monospace, 'Cascadia Code', Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 50vh;
+  overflow: auto;
+  margin: 0;
 }
 
 @keyframes piscar {

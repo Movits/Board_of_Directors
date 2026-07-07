@@ -12,9 +12,11 @@ import type {
 } from '../types'
 import { MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from './members'
 import { SCHEMA_DEBATE, SCHEMA_RODADA1 } from './schemas'
-import { promptDebate, promptRodada1, promptSintese } from './prompts'
+import { promptDebate, promptExecucao, promptRodada1, promptSintese } from './prompts'
 
 const CONCORRENCIA = 4
+/** Teto de rodadas no modo "até consenso" — evita reuniões (e custos) infinitos. */
+export const MAX_RODADAS_CONSENSO = 5
 
 /** Executa tarefas em paralelo com limite de concorrência (respeita rate limits da API). */
 async function emFila<T>(tarefas: (() => Promise<T>)[], limite: number): Promise<void> {
@@ -109,8 +111,23 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
     }
 
     // ── Rodadas de debate ────────────────────────────────────────────────────
-    for (let rodada = 1; rodada <= config.rodadasDebate; rodada++) {
+    const unanimidade = (): Voto | null => {
+      const votos = ativos.map((m) => votoFinalDe(membros[m.id])).filter((v): v is Voto => Boolean(v))
+      if (votos.length < ativos.length) return null
+      return votos.every((v) => v === votos[0]) ? votos[0] : null
+    }
+
+    const maxRodadas = config.ateConsenso ? MAX_RODADAS_CONSENSO : config.rodadasDebate
+    let consensoNaRodada: number | undefined
+
+    for (let rodada = 1; rodada <= maxRodadas; rodada++) {
       if (cancelado()) return null
+      // No modo consenso, se todos já concordam não há o que debater.
+      if (config.ateConsenso && unanimidade()) {
+        consensoNaRodada = rodada - 1
+        eventos.onConsenso(rodada - 1)
+        break
+      }
       eventos.onFase('debate', rodada)
       await emFila(
         ativos.map((m) => async () => {
@@ -147,6 +164,11 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
         CONCORRENCIA,
       )
     }
+    // Consenso alcançado na última rodada possível: registra também.
+    if (config.ateConsenso && consensoNaRodada === undefined && unanimidade()) {
+      consensoNaRodada = maxRodadas
+      eventos.onConsenso(maxRodadas)
+    }
     if (cancelado()) return null
 
     // ── Síntese do Presidente (streamada) ────────────────────────────────────
@@ -158,6 +180,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
         config.ideia,
         ativos.map((m) => ({ membro: m, estado: membros[m.id] })),
       ),
+      proposito: 'sintese',
       onDelta: (t) => {
         if (!cancelado()) eventos.onVereditoDelta(t)
       },
@@ -166,14 +189,38 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
     if (cancelado()) return null
     eventos.onStatusMembro(PRESIDENTE.id, 'pronto')
 
+    // ── Prompt de execução para o Claude Code (opcional, streamado) ─────────
+    let promptExec: string | undefined
+    if (config.gerarPrompt) {
+      eventos.onFase('prompt')
+      eventos.onStatusMembro(PRESIDENTE.id, 'analisando')
+      promptExec = await transporte.streamada({
+        system: personas[PRESIDENTE.id] ?? PRESIDENTE.systemPrompt,
+        user: promptExecucao(
+          config.ideia,
+          ativos.map((m) => ({ membro: m, estado: membros[m.id] })),
+          veredito,
+        ),
+        proposito: 'prompt',
+        onDelta: (t) => {
+          if (!cancelado()) eventos.onPromptDelta(t)
+        },
+        signal: abortar,
+      })
+      if (cancelado()) return null
+      eventos.onStatusMembro(PRESIDENTE.id, 'pronto')
+    }
+
     const reuniao: Reuniao = {
       id: `reuniao-${Date.now()}`,
       data: new Date().toISOString(),
       config,
       membros,
       veredito,
+      promptExecucao: promptExec,
       placar: calculaPlacar(membros),
       fase: 'concluida',
+      consensoNaRodada,
     }
     eventos.onFase('concluida')
     eventos.onConcluida(reuniao)

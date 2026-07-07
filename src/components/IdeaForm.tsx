@@ -1,22 +1,32 @@
 import { useState } from 'react'
-import type { ConfigReuniao, ModelId } from '../types'
+import type { ConfigReuniao } from '../types'
 import { MEMBROS_VOTANTES } from '../board/members'
-import { MODELOS } from '../api/anthropic'
-import { leApiKey, leModelo } from '../lib/storage'
+import { infoProvedor } from '../api'
+import { leChave, leModeloDe, leProvedor } from '../lib/storage'
 
 interface Props {
   aoConvocar: (config: ConfigReuniao) => void
   aoAbrirConfiguracoes: () => void
 }
 
+type ModoDebate = '1' | '2' | '3' | 'consenso'
+
 export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
-  const temChave = leApiKey().length > 0
+  const provedor = leProvedor()
+  const info = infoProvedor(provedor)
+  const temChave = leChave(provedor).length > 0
+
+  const modeloSalvo = leModeloDe(provedor)
+  const modeloNaLista = info.modelos.some((m) => m.id === modeloSalvo)
+
   const [ideia, setIdeia] = useState('')
-  const [modelo, setModelo] = useState<ModelId>(leModelo())
+  const [modelo, setModelo] = useState(modeloNaLista ? modeloSalvo : 'personalizado')
+  const [modeloCustom, setModeloCustom] = useState(modeloNaLista ? '' : modeloSalvo)
   const [selecionados, setSelecionados] = useState<Set<string>>(
     new Set(MEMBROS_VOTANTES.map((m) => m.id)),
   )
-  const [rodadasDebate, setRodadasDebate] = useState(1)
+  const [modoDebate, setModoDebate] = useState<ModoDebate>('1')
+  const [gerarPrompt, setGerarPrompt] = useState(true)
   const [demo, setDemo] = useState(!temChave)
 
   const alterna = (id: string) => {
@@ -28,7 +38,8 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
     })
   }
 
-  const pronto = ideia.trim().length >= 10 && selecionados.size >= 2
+  const modeloFinal = modelo === 'personalizado' ? modeloCustom.trim() : modelo
+  const pronto = ideia.trim().length >= 10 && selecionados.size >= 2 && modeloFinal.length > 0
 
   return (
     <div className="tela-inicio">
@@ -36,16 +47,17 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
         <h1>Apresente sua ideia ao conselho</h1>
         <p>
           Treze conselheiros com expertises diferentes — finanças, marketing, tecnologia, produto,
-          design, vendas, jurídico e mais — analisam sua ideia, debatem entre si e votam.
+          design, vendas, jurídico e mais — analisam sua ideia, debatem entre si, votam e entregam
+          um prompt pronto para o Claude Code executar.
         </p>
       </section>
 
       {!temChave && (
         <div className="aviso aviso-info">
-          <strong>Sem chave de API configurada.</strong> A reunião rodará em{' '}
+          <strong>Sem chave de API configurada para {info.rotulo}.</strong> A reunião rodará em{' '}
           <em>modo demonstração</em> (respostas simuladas, sem custo).{' '}
           <button className="link" onClick={aoAbrirConfiguracoes}>
-            Configurar chave da Anthropic →
+            Configurar chave →
           </button>
         </div>
       )}
@@ -87,9 +99,14 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
 
       <div className="linha-opcoes">
         <fieldset className="campo campo-metade">
-          <legend className="campo-rotulo">Modelo</legend>
+          <legend className="campo-rotulo">
+            Modelo · {info.rotulo}{' '}
+            <button className="link link-sutil" onClick={aoAbrirConfiguracoes} type="button">
+              trocar provedor
+            </button>
+          </legend>
           <div className="opcoes-modelo">
-            {MODELOS.map((m) => (
+            {info.modelos.map((m) => (
               <label key={m.id} className={`opcao-modelo ${modelo === m.id ? 'selecionada' : ''}`}>
                 <input
                   type="radio"
@@ -101,6 +118,28 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
                 <small>{m.detalhe}</small>
               </label>
             ))}
+            <label
+              className={`opcao-modelo ${modelo === 'personalizado' ? 'selecionada' : ''}`}
+            >
+              <input
+                type="radio"
+                name="modelo"
+                checked={modelo === 'personalizado'}
+                onChange={() => setModelo('personalizado')}
+              />
+              <strong>Personalizado…</strong>
+              <small>digite o ID exato de qualquer modelo do provedor</small>
+              {modelo === 'personalizado' && (
+                <input
+                  type="text"
+                  className="entrada-modelo-custom"
+                  value={modeloCustom}
+                  onChange={(e) => setModeloCustom(e.target.value)}
+                  placeholder={provedor === 'anthropic' ? 'ex.: claude-sonnet-4-5' : 'ex.: gpt-5.4-nano'}
+                  spellCheck={false}
+                />
+              )}
+            </label>
           </div>
         </fieldset>
 
@@ -108,23 +147,48 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
           <fieldset className="campo">
             <legend className="campo-rotulo">Rodadas de debate</legend>
             <div className="opcoes-debate">
-              {[1, 2].map((n) => (
-                <label key={n} className={`opcao-debate ${rodadasDebate === n ? 'selecionada' : ''}`}>
+              {(['1', '2', '3'] as const).map((n) => (
+                <label key={n} className={`opcao-debate ${modoDebate === n ? 'selecionada' : ''}`}>
                   <input
                     type="radio"
                     name="debate"
-                    checked={rodadasDebate === n}
-                    onChange={() => setRodadasDebate(n)}
+                    checked={modoDebate === n}
+                    onChange={() => setModoDebate(n)}
                   />
-                  {n} rodada{n > 1 ? 's' : ''}
+                  {n}
                 </label>
               ))}
+              <label className={`opcao-debate ${modoDebate === 'consenso' ? 'selecionada' : ''}`}>
+                <input
+                  type="radio"
+                  name="debate"
+                  checked={modoDebate === 'consenso'}
+                  onChange={() => setModoDebate('consenso')}
+                />
+                🤝 Até consenso
+              </label>
             </div>
             <span className="campo-dica">
-              No debate, os conselheiros leem as posições uns dos outros, rebatem e podem mudar de
-              voto. Mais rodadas = análise mais rica, custo maior.
+              {modoDebate === 'consenso'
+                ? 'O debate se repete até TODOS os conselheiros votarem igual (máximo de 5 rodadas — atenção ao custo).'
+                : 'No debate, os conselheiros leem as posições uns dos outros, rebatem e podem mudar de voto.'}
             </span>
           </fieldset>
+
+          <label className="alternador">
+            <input
+              type="checkbox"
+              checked={gerarPrompt}
+              onChange={(e) => setGerarPrompt(e.target.checked)}
+            />
+            <span>
+              Gerar prompt de execução para o Claude Code
+              <small>
+                Ao final, o conselho transforma a decisão em um prompt detalhado, pronto para colar
+                no Claude Code e executar a ideia.
+              </small>
+            </span>
+          </label>
 
           <label className="alternador">
             <input
@@ -147,9 +211,12 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
         onClick={() =>
           aoConvocar({
             ideia: ideia.trim(),
-            modelo,
+            provedor,
+            modelo: modeloFinal,
             membrosIds: [...selecionados],
-            rodadasDebate,
+            rodadasDebate: modoDebate === 'consenso' ? 1 : Number(modoDebate),
+            ateConsenso: modoDebate === 'consenso',
+            gerarPrompt,
             demo,
           })
         }

@@ -1,27 +1,44 @@
 import { useState } from 'react'
-import type { ModelId } from '../types'
+import type { Provedor } from '../types'
 import { MEMBROS } from '../board/members'
-import { MODELOS } from '../api/anthropic'
+import { PROVEDORES, infoProvedor } from '../api'
 import {
-  gravaApiKey,
-  gravaModelo,
+  gravaBaseUrl,
+  gravaChave,
+  gravaModeloDe,
   gravaPersona,
-  leApiKey,
-  leModelo,
+  gravaProvedor,
+  leBaseUrl,
+  leChave,
+  leModeloDe,
   lePersonas,
+  leProvedor,
 } from '../lib/storage'
 
 export function Settings() {
-  const [apiKey, setApiKey] = useState(leApiKey())
+  const [provedor, setProvedor] = useState<Provedor>(leProvedor())
+  const [chave, setChave] = useState(leChave(leProvedor()))
   const [mostraChave, setMostraChave] = useState(false)
-  const [modelo, setModelo] = useState<ModelId>(leModelo())
+  const [baseUrl, setBaseUrl] = useState(leBaseUrl())
+  const [modelo, setModelo] = useState(leModeloDe(leProvedor()))
   const [personas, setPersonas] = useState<Record<string, string>>(lePersonas())
   const [aberto, setAberto] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
 
+  const info = infoProvedor(provedor)
+
   const confirmaSalvo = () => {
     setSalvo(true)
     setTimeout(() => setSalvo(false), 2000)
+  }
+
+  const trocaProvedor = (novo: Provedor) => {
+    setProvedor(novo)
+    gravaProvedor(novo)
+    setChave(leChave(novo))
+    setModelo(leModeloDe(novo))
+    setMostraChave(false)
+    confirmaSalvo()
   }
 
   return (
@@ -29,20 +46,42 @@ export function Settings() {
       <h1>Configurações</h1>
 
       <section className="cartao-config">
-        <h2>🔑 Chave de API da Anthropic</h2>
+        <h2>🤖 Provedor de IA</h2>
+        <p>
+          Escolha de qual API vêm os conselheiros. Os modelos disponíveis na tela inicial mudam
+          conforme o provedor.
+        </p>
+        <div className="opcoes-modelo">
+          {PROVEDORES.map((p) => (
+            <label key={p.id} className={`opcao-modelo ${provedor === p.id ? 'selecionada' : ''}`}>
+              <input
+                type="radio"
+                name="provedor"
+                checked={provedor === p.id}
+                onChange={() => trocaProvedor(p.id)}
+              />
+              <strong>{p.rotulo}</strong>
+              <small>{p.descricao}</small>
+            </label>
+          ))}
+        </div>
+      </section>
+
+      <section className="cartao-config">
+        <h2>🔑 Chave de API — {info.rotulo}</h2>
         <p>
           Crie uma chave em{' '}
-          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
-            console.anthropic.com
+          <a href={info.urlChave} target="_blank" rel="noreferrer">
+            {info.urlChave.replace('https://', '')}
           </a>{' '}
           (uso pago por consumo). Recomendamos definir um <strong>limite de gasto</strong> na conta.
         </p>
         <div className="linha-chave">
           <input
             type={mostraChave ? 'text' : 'password'}
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-ant-…"
+            value={chave}
+            onChange={(e) => setChave(e.target.value)}
+            placeholder={info.placeholderChave}
             autoComplete="off"
             spellCheck={false}
           />
@@ -52,25 +91,56 @@ export function Settings() {
           <button
             className="botao-principal botao-compacto"
             onClick={() => {
-              gravaApiKey(apiKey.trim())
+              gravaChave(provedor, chave.trim())
               confirmaSalvo()
             }}
           >
             Salvar
           </button>
         </div>
+
+        {info.suportaBaseUrl && (
+          <label className="campo campo-base-url">
+            <span className="campo-rotulo">Base URL personalizada (opcional)</span>
+            <div className="linha-chave">
+              <input
+                type="text"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                placeholder="https://openrouter.ai/api/v1 (vazio = api.openai.com)"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                className="botao-principal botao-compacto"
+                onClick={() => {
+                  gravaBaseUrl(baseUrl.trim())
+                  confirmaSalvo()
+                }}
+              >
+                Salvar
+              </button>
+            </div>
+            <span className="campo-dica">
+              Para APIs compatíveis com OpenAI: OpenRouter, Groq, Gemini, Ollama etc. Use com um
+              modelo "Personalizado" na tela inicial. A API precisa aceitar chamadas do navegador
+              (CORS).
+            </span>
+          </label>
+        )}
+
         <div className="aviso aviso-atencao">
-          <strong>Sobre segurança:</strong> a chave fica salva apenas no <em>localStorage</em> deste
-          navegador e é enviada diretamente à API da Anthropic — nunca a outros servidores. Ainda
-          assim, não use este site em computadores compartilhados e prefira uma chave dedicada com
-          limite de gasto.
+          <strong>Sobre segurança:</strong> as chaves ficam salvas apenas no <em>localStorage</em>{' '}
+          deste navegador e são enviadas diretamente à API do provedor — nunca a outros servidores.
+          Ainda assim, não use este site em computadores compartilhados e prefira chaves dedicadas
+          com limite de gasto.
         </div>
       </section>
 
       <section className="cartao-config">
-        <h2>🧠 Modelo padrão</h2>
+        <h2>🧠 Modelo padrão — {info.rotulo}</h2>
         <div className="opcoes-modelo">
-          {MODELOS.map((m) => (
+          {info.modelos.map((m) => (
             <label key={m.id} className={`opcao-modelo ${modelo === m.id ? 'selecionada' : ''}`}>
               <input
                 type="radio"
@@ -78,7 +148,7 @@ export function Settings() {
                 checked={modelo === m.id}
                 onChange={() => {
                   setModelo(m.id)
-                  gravaModelo(m.id)
+                  gravaModeloDe(provedor, m.id)
                   confirmaSalvo()
                 }}
               />
@@ -87,6 +157,10 @@ export function Settings() {
             </label>
           ))}
         </div>
+        <p className="campo-dica">
+          Também dá para digitar um modelo personalizado na tela inicial, na opção
+          "Personalizado…".
+        </p>
       </section>
 
       <section className="cartao-config">

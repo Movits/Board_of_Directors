@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import type { ConfigReuniao, EstadoMembro, FaseReuniao, Reuniao } from '../types'
 import { MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from '../board/members'
 import { conduzirReuniao, calculaPlacar } from '../board/orchestrator'
-import { criaTransporteApi, mensagemDeErro } from '../api/anthropic'
+import { criaTransporte } from '../api'
 import { criaTransporteDemo } from '../board/demo'
-import { leApiKey, lePersonas, gravaReuniao } from '../lib/storage'
+import { leBaseUrl, leChave, lePersonas, gravaReuniao } from '../lib/storage'
 import { MemberCard } from './MemberCard'
 import { MemberDrawer } from './MemberDrawer'
 import { VoteTally } from './VoteTally'
 import { VerdictPanel } from './VerdictPanel'
+import { PromptPanel } from './PromptPanel'
 import { Timeline } from './Timeline'
 
 interface Props {
@@ -23,6 +24,8 @@ interface EstadoUI {
   membros: Record<string, EstadoMembro>
   statusPresidente: EstadoMembro['status']
   veredito: string
+  promptExecucao: string
+  consensoNaRodada?: number
   erro?: string
   reuniao?: Reuniao
 }
@@ -35,6 +38,8 @@ function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
       membros: existente.membros,
       statusPresidente: 'pronto',
       veredito: existente.veredito,
+      promptExecucao: existente.promptExecucao ?? '',
+      consensoNaRodada: existente.consensoNaRodada,
       reuniao: existente,
     }
   }
@@ -42,7 +47,14 @@ function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
   for (const id of config.membrosIds) {
     membros[id] = { membroId: id, status: 'aguardando' }
   }
-  return { fase: 'preparando', rodadaDebate: 0, membros, statusPresidente: 'aguardando', veredito: '' }
+  return {
+    fase: 'preparando',
+    rodadaDebate: 0,
+    membros,
+    statusPresidente: 'aguardando',
+    veredito: '',
+    promptExecucao: '',
+  }
 }
 
 export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
@@ -57,7 +69,13 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
 
     const abort = new AbortController()
     abortRef.current = abort
-    const transporte = config.demo ? criaTransporteDemo() : criaTransporteApi(leApiKey(), config.modelo)
+    const transporte = config.demo
+      ? criaTransporteDemo()
+      : criaTransporte(config.provedor, {
+          apiKey: leChave(config.provedor),
+          modelo: config.modelo,
+          baseUrl: config.provedor === 'openai' ? leBaseUrl() : undefined,
+        })
 
     conduzirReuniao({
       config,
@@ -97,12 +115,15 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
               },
             },
           })),
+        onConsenso: (rodada) => setEstado((e) => ({ ...e, consensoNaRodada: rodada })),
         onVereditoDelta: (texto) => setEstado((e) => ({ ...e, veredito: e.veredito + texto })),
+        onPromptDelta: (texto) =>
+          setEstado((e) => ({ ...e, promptExecucao: e.promptExecucao + texto })),
         onConcluida: (reuniao) => {
           gravaReuniao(reuniao)
           setEstado((e) => ({ ...e, reuniao }))
         },
-        onErro: (mensagem) => setEstado((e) => ({ ...e, erro: mensagemDeErro(new Error(mensagem)) })),
+        onErro: (mensagem) => setEstado((e) => ({ ...e, erro: mensagem })),
       },
     })
 
@@ -129,12 +150,27 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
           </span>
           <p>{config.ideia}</p>
         </div>
-        <Timeline fase={estado.fase} rodadaDebate={estado.rodadaDebate} totalDebates={config.rodadasDebate} />
+        <Timeline
+          fase={estado.fase}
+          rodadaDebate={estado.rodadaDebate}
+          totalDebates={config.rodadasDebate}
+          ateConsenso={config.ateConsenso ?? false}
+          gerarPrompt={config.gerarPrompt ?? false}
+        />
       </div>
 
       {estado.erro && (
         <div className="aviso aviso-erro">
           <strong>A reunião foi interrompida:</strong> {estado.erro}
+        </div>
+      )}
+
+      {estado.consensoNaRodada !== undefined && (
+        <div className="aviso aviso-consenso">
+          🤝 <strong>Consenso alcançado!</strong>{' '}
+          {estado.consensoNaRodada === 0
+            ? 'Os conselheiros já concordaram nas análises iniciais — não houve necessidade de debate.'
+            : `Todos os conselheiros convergiram para o mesmo voto após ${estado.consensoNaRodada} rodada${estado.consensoNaRodada > 1 ? 's' : ''} de debate.`}
         </div>
       )}
 
@@ -162,6 +198,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
             streamando={estado.fase === 'sintese'}
             reuniao={estado.reuniao}
           />
+          <PromptPanel prompt={estado.promptExecucao} streamando={estado.fase === 'prompt'} />
           {!emAndamento && (
             <button className="botao-principal" onClick={aoNovaReuniao}>
               ✨ Nova reunião
