@@ -6,7 +6,9 @@ const CHAVES = {
   provedor: 'bod.provedor',
   chavesApi: 'bod.chavesApi',
   modelos: 'bod.modelos',
-  baseUrlOpenai: 'bod.baseUrlOpenai',
+  baseUrlLegada: 'bod.baseUrlOpenai',
+  baseUrls: 'bod.baseUrls',
+  modelosDescobertos: 'bod.modelosDescobertos',
   personas: 'bod.personas',
   historico: 'bod.historico',
 } as const
@@ -16,6 +18,7 @@ const MAX_HISTORICO = 20
 const MODELO_PADRAO: Record<Provedor, string> = {
   anthropic: 'claude-opus-4-8',
   openai: 'gpt-5.5',
+  custom: '',
 }
 
 function le<T>(chave: string, padrao: T): T {
@@ -75,9 +78,35 @@ export function gravaModeloDe(provedor: Provedor, modelo: string): void {
   grava(CHAVES.modelos, mapa)
 }
 
-// ── Base URL personalizada (APIs compatíveis com OpenAI) ─────────────────────
-export const leBaseUrl = (): string => le(CHAVES.baseUrlOpenai, '')
-export const gravaBaseUrl = (v: string): void => grava(CHAVES.baseUrlOpenai, v)
+// ── Base URL por provedor (APIs compatíveis com OpenAI) ─────────────────────
+type MapaBaseUrls = Partial<Record<Provedor, string>>
+
+export function leBaseUrlDe(provedor: Provedor): string {
+  const mapa = le<MapaBaseUrls>(CHAVES.baseUrls, {})
+  if (mapa[provedor]) return mapa[provedor]!
+  // migração: a v2 guardava uma única Base URL (do provedor OpenAI)
+  if (provedor === 'openai') return le<string>(CHAVES.baseUrlLegada, '')
+  return ''
+}
+
+export function gravaBaseUrlDe(provedor: Provedor, valor: string): void {
+  const mapa = le<MapaBaseUrls>(CHAVES.baseUrls, {})
+  mapa[provedor] = valor
+  grava(CHAVES.baseUrls, mapa)
+}
+
+// ── Modelos descobertos via "Buscar modelos" (por provedor) ─────────────────
+type MapaDescobertos = Partial<Record<Provedor, string[]>>
+
+export function leModelosDescobertos(provedor: Provedor): string[] {
+  return le<MapaDescobertos>(CHAVES.modelosDescobertos, {})[provedor] ?? []
+}
+
+export function gravaModelosDescobertos(provedor: Provedor, modelos: string[]): void {
+  const mapa = le<MapaDescobertos>(CHAVES.modelosDescobertos, {})
+  mapa[provedor] = modelos
+  grava(CHAVES.modelosDescobertos, mapa)
+}
 
 // ── Personas customizadas (overrides do systemPrompt por membro) ─────────────
 export const lePersonas = (): Record<string, string> => le(CHAVES.personas, {})

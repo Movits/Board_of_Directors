@@ -4,7 +4,7 @@ import { MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from '../board/members'
 import { conduzirReuniao, calculaPlacar } from '../board/orchestrator'
 import { criaTransporte } from '../api'
 import { criaTransporteDemo } from '../board/demo'
-import { leBaseUrl, leChave, lePersonas, gravaReuniao } from '../lib/storage'
+import { leBaseUrlDe, leChave, lePersonas, gravaReuniao } from '../lib/storage'
 import { MemberCard } from './MemberCard'
 import { MemberDrawer } from './MemberDrawer'
 import { VoteTally } from './VoteTally'
@@ -74,7 +74,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
       : criaTransporte(config.provedor, {
           apiKey: leChave(config.provedor),
           modelo: config.modelo,
-          baseUrl: config.provedor === 'openai' ? leBaseUrl() : undefined,
+          baseUrl: config.provedor === 'anthropic' ? undefined : leBaseUrlDe(config.provedor),
         })
 
     conduzirReuniao({

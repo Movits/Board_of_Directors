@@ -1,6 +1,6 @@
 export type Voto = 'aprovar' | 'aprovar_com_ressalvas' | 'rejeitar'
 
-export type Provedor = 'anthropic' | 'openai'
+export type Provedor = 'anthropic' | 'openai' | 'custom'
 
 export interface Membro {
   id: string

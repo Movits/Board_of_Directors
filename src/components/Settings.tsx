@@ -1,26 +1,32 @@
 import { useState } from 'react'
 import type { Provedor } from '../types'
 import { MEMBROS } from '../board/members'
-import { PROVEDORES, infoProvedor } from '../api'
+import { PROVEDORES, PRESETS_BASE_URL, infoProvedor, listaModelos } from '../api'
 import {
-  gravaBaseUrl,
+  gravaBaseUrlDe,
   gravaChave,
   gravaModeloDe,
+  gravaModelosDescobertos,
   gravaPersona,
   gravaProvedor,
-  leBaseUrl,
+  leBaseUrlDe,
   leChave,
   leModeloDe,
+  leModelosDescobertos,
   lePersonas,
   leProvedor,
 } from '../lib/storage'
 
 export function Settings() {
-  const [provedor, setProvedor] = useState<Provedor>(leProvedor())
-  const [chave, setChave] = useState(leChave(leProvedor()))
+  const inicial = leProvedor()
+  const [provedor, setProvedor] = useState<Provedor>(inicial)
+  const [chave, setChave] = useState(leChave(inicial))
   const [mostraChave, setMostraChave] = useState(false)
-  const [baseUrl, setBaseUrl] = useState(leBaseUrl())
-  const [modelo, setModelo] = useState(leModeloDe(leProvedor()))
+  const [baseUrl, setBaseUrl] = useState(leBaseUrlDe(inicial))
+  const [modelo, setModelo] = useState(leModeloDe(inicial))
+  const [descobertos, setDescobertos] = useState<string[]>(leModelosDescobertos(inicial))
+  const [buscando, setBuscando] = useState(false)
+  const [erroBusca, setErroBusca] = useState('')
   const [personas, setPersonas] = useState<Record<string, string>>(lePersonas())
   const [aberto, setAberto] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
@@ -36,9 +42,34 @@ export function Settings() {
     setProvedor(novo)
     gravaProvedor(novo)
     setChave(leChave(novo))
+    setBaseUrl(leBaseUrlDe(novo))
     setModelo(leModeloDe(novo))
+    setDescobertos(leModelosDescobertos(novo))
     setMostraChave(false)
+    setErroBusca('')
     confirmaSalvo()
+  }
+
+  const buscarModelos = async () => {
+    setBuscando(true)
+    setErroBusca('')
+    try {
+      // usa os valores atuais dos campos (mesmo sem clicar em Salvar)
+      gravaChave(provedor, chave.trim())
+      gravaBaseUrlDe(provedor, baseUrl.trim())
+      const ids = await listaModelos(provedor, { apiKey: chave.trim(), baseUrl: baseUrl.trim() })
+      setDescobertos(ids)
+      gravaModelosDescobertos(provedor, ids)
+      if (ids.length > 0 && !ids.includes(modelo)) {
+        setModelo(ids[0])
+        gravaModeloDe(provedor, ids[0])
+      }
+      confirmaSalvo()
+    } catch (err) {
+      setErroBusca(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBuscando(false)
+    }
   }
 
   return (
@@ -48,8 +79,8 @@ export function Settings() {
       <section className="cartao-config">
         <h2>🤖 Provedor de IA</h2>
         <p>
-          Escolha de qual API vêm os conselheiros. Os modelos disponíveis na tela inicial mudam
-          conforme o provedor.
+          Escolha de qual API vêm os conselheiros — incluindo APIs locais como o Ollama. Os modelos
+          disponíveis na tela inicial mudam conforme o provedor.
         </p>
         <div className="opcoes-modelo">
           {PROVEDORES.map((p) => (
@@ -68,53 +99,61 @@ export function Settings() {
       </section>
 
       <section className="cartao-config">
-        <h2>🔑 Chave de API — {info.rotulo}</h2>
-        <p>
-          Crie uma chave em{' '}
-          <a href={info.urlChave} target="_blank" rel="noreferrer">
-            {info.urlChave.replace('https://', '')}
-          </a>{' '}
-          (uso pago por consumo). Recomendamos definir um <strong>limite de gasto</strong> na conta.
-        </p>
-        <div className="linha-chave">
-          <input
-            type={mostraChave ? 'text' : 'password'}
-            value={chave}
-            onChange={(e) => setChave(e.target.value)}
-            placeholder={info.placeholderChave}
-            autoComplete="off"
-            spellCheck={false}
-          />
-          <button onClick={() => setMostraChave((v) => !v)} title={mostraChave ? 'Ocultar' : 'Mostrar'}>
-            {mostraChave ? '🙈' : '👁️'}
-          </button>
-          <button
-            className="botao-principal botao-compacto"
-            onClick={() => {
-              gravaChave(provedor, chave.trim())
-              confirmaSalvo()
-            }}
-          >
-            Salvar
-          </button>
-        </div>
+        <h2>🔑 Conexão — {info.rotulo}</h2>
+        {info.urlChave ? (
+          <p>
+            Crie uma chave em{' '}
+            <a href={info.urlChave} target="_blank" rel="noreferrer">
+              {info.urlChave.replace('https://', '')}
+            </a>{' '}
+            (uso pago por consumo). Recomendamos definir um <strong>limite de gasto</strong> na
+            conta.
+          </p>
+        ) : (
+          <p>
+            Conecte qualquer API que fale o protocolo da OpenAI. Para serviços na nuvem
+            (OpenRouter, Groq…), crie a chave no site do serviço; APIs locais como Ollama e LM
+            Studio geralmente não exigem chave.
+          </p>
+        )}
 
-        {info.suportaBaseUrl && (
+        {info.baseUrl !== 'nao' && (
           <label className="campo campo-base-url">
-            <span className="campo-rotulo">Base URL personalizada (opcional)</span>
+            <span className="campo-rotulo">
+              Base URL {info.baseUrl === 'obrigatoria' ? '(obrigatória)' : '(opcional)'}
+            </span>
+            {info.baseUrl === 'obrigatoria' && (
+              <div className="presets-base-url">
+                {PRESETS_BASE_URL.map((p) => (
+                  <button
+                    key={p.rotulo}
+                    type="button"
+                    className={`chip ${baseUrl === p.url ? 'chip-ativo' : ''}`}
+                    title={p.dica ? `${p.url} — ${p.dica}` : p.url}
+                    onClick={() => setBaseUrl(p.url)}
+                  >
+                    {p.rotulo}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="linha-chave">
               <input
                 type="text"
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="https://openrouter.ai/api/v1 (vazio = api.openai.com)"
+                placeholder={
+                  info.baseUrl === 'obrigatoria'
+                    ? 'http://localhost:11434/v1'
+                    : 'vazio = api.openai.com'
+                }
                 autoComplete="off"
                 spellCheck={false}
               />
               <button
                 className="botao-principal botao-compacto"
                 onClick={() => {
-                  gravaBaseUrl(baseUrl.trim())
+                  gravaBaseUrlDe(provedor, baseUrl.trim())
                   confirmaSalvo()
                 }}
               >
@@ -122,12 +161,40 @@ export function Settings() {
               </button>
             </div>
             <span className="campo-dica">
-              Para APIs compatíveis com OpenAI: OpenRouter, Groq, Gemini, Ollama etc. Use com um
-              modelo "Personalizado" na tela inicial. A API precisa aceitar chamadas do navegador
-              (CORS).
+              A API precisa aceitar chamadas do navegador (CORS). Para <strong>Ollama local</strong>
+              : inicie com <code>OLLAMA_ORIGINS='*' ollama serve</code> e use{' '}
+              <code>http://localhost:11434/v1</code>.
             </span>
           </label>
         )}
+
+        <label className="campo campo-base-url">
+          <span className="campo-rotulo">
+            Chave de API {info.chaveOpcional ? '(opcional para APIs locais)' : ''}
+          </span>
+          <div className="linha-chave">
+            <input
+              type={mostraChave ? 'text' : 'password'}
+              value={chave}
+              onChange={(e) => setChave(e.target.value)}
+              placeholder={info.placeholderChave}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button onClick={() => setMostraChave((v) => !v)} title={mostraChave ? 'Ocultar' : 'Mostrar'}>
+              {mostraChave ? '🙈' : '👁️'}
+            </button>
+            <button
+              className="botao-principal botao-compacto"
+              onClick={() => {
+                gravaChave(provedor, chave.trim())
+                confirmaSalvo()
+              }}
+            >
+              Salvar
+            </button>
+          </div>
+        </label>
 
         <div className="aviso aviso-atencao">
           <strong>Sobre segurança:</strong> as chaves ficam salvas apenas no <em>localStorage</em>{' '}
@@ -139,27 +206,82 @@ export function Settings() {
 
       <section className="cartao-config">
         <h2>🧠 Modelo padrão — {info.rotulo}</h2>
-        <div className="opcoes-modelo">
-          {info.modelos.map((m) => (
-            <label key={m.id} className={`opcao-modelo ${modelo === m.id ? 'selecionada' : ''}`}>
-              <input
-                type="radio"
-                name="modelo-config"
-                checked={modelo === m.id}
-                onChange={() => {
-                  setModelo(m.id)
-                  gravaModeloDe(provedor, m.id)
-                  confirmaSalvo()
-                }}
-              />
-              <strong>{m.rotulo}</strong>
-              <small>{m.detalhe}</small>
+        {info.modelos.length > 0 && (
+          <div className="opcoes-modelo">
+            {info.modelos.map((m) => (
+              <label key={m.id} className={`opcao-modelo ${modelo === m.id ? 'selecionada' : ''}`}>
+                <input
+                  type="radio"
+                  name="modelo-config"
+                  checked={modelo === m.id}
+                  onChange={() => {
+                    setModelo(m.id)
+                    gravaModeloDe(provedor, m.id)
+                    confirmaSalvo()
+                  }}
+                />
+                <strong>{m.rotulo}</strong>
+                <small>{m.detalhe}</small>
+              </label>
+            ))}
+          </div>
+        )}
+
+        {provedor !== 'anthropic' && (
+          <div className="descoberta-modelos">
+            <div className="linha-chave">
+              <button className="botao-principal botao-compacto" onClick={buscarModelos} disabled={buscando}>
+                {buscando ? 'Buscando…' : '🔎 Buscar modelos desta API'}
+              </button>
+              {descobertos.length > 0 && (
+                <select
+                  className="seletor-modelos"
+                  value={descobertos.includes(modelo) ? modelo : ''}
+                  onChange={(e) => {
+                    setModelo(e.target.value)
+                    gravaModeloDe(provedor, e.target.value)
+                    confirmaSalvo()
+                  }}
+                >
+                  <option value="" disabled>
+                    escolha um modelo ({descobertos.length})
+                  </option>
+                  {descobertos.map((id) => (
+                    <option key={id} value={id}>
+                      {id}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            {erroBusca && <div className="aviso aviso-erro">{erroBusca}</div>}
+            <label className="campo">
+              <span className="campo-dica">…ou digite o ID do modelo manualmente:</span>
+              <div className="linha-chave">
+                <input
+                  type="text"
+                  className="entrada-modelo-custom"
+                  value={modelo}
+                  onChange={(e) => setModelo(e.target.value)}
+                  placeholder="ex.: llama3.3, qwen2.5-coder, gpt-5.4-nano…"
+                  spellCheck={false}
+                />
+                <button
+                  className="botao-principal botao-compacto"
+                  onClick={() => {
+                    gravaModeloDe(provedor, modelo.trim())
+                    confirmaSalvo()
+                  }}
+                >
+                  Salvar
+                </button>
+              </div>
             </label>
-          ))}
-        </div>
+          </div>
+        )}
         <p className="campo-dica">
-          Também dá para digitar um modelo personalizado na tela inicial, na opção
-          "Personalizado…".
+          O modelo padrão selecionado aqui aparece na tela inicial — onde também dá para trocar por
+          reunião.
         </p>
       </section>
 

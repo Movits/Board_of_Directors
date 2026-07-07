@@ -9,63 +9,116 @@ export const MODELOS_OPENAI = [
 
 function traduzErro(err: unknown): Error {
   if (err instanceof OpenAI.AuthenticationError) {
-    return new Error('Chave de API da OpenAI inválida. Confira em Configurações.')
+    return new Error('Chave de API inválida para esta API. Confira em Configurações.')
   }
   if (err instanceof OpenAI.PermissionDeniedError) {
-    return new Error('Sua chave da OpenAI não tem permissão para este modelo.')
+    return new Error('Sua chave não tem permissão para este modelo.')
   }
   if (err instanceof OpenAI.NotFoundError) {
-    return new Error('Modelo não encontrado nesta API. Confira o nome do modelo (e a Base URL, se personalizada).')
+    return new Error('Modelo ou endpoint não encontrado. Confira o nome do modelo e a Base URL.')
   }
   if (err instanceof OpenAI.RateLimitError) {
-    return new Error('Limite de requisições da OpenAI atingido. Aguarde um instante.')
+    return new Error('Limite de requisições da API atingido. Aguarde um instante.')
   }
   if (err instanceof OpenAI.APIConnectionError) {
-    return new Error('Falha de conexão com a API. Verifique sua internet (e se a Base URL aceita chamadas do navegador).')
+    return new Error(
+      'Falha de conexão com a API. Verifique sua internet, a Base URL e se a API aceita chamadas do navegador (CORS — para Ollama local, inicie com OLLAMA_ORIGINS).',
+    )
   }
   if (err instanceof OpenAI.APIError) {
-    return new Error(`Erro da API OpenAI (${err.status ?? '?'}): ${err.message}`)
+    return new Error(`Erro da API (${err.status ?? '?'}): ${err.message}`)
   }
   return err instanceof Error ? err : new Error(String(err))
 }
 
-export function criaTransporteOpenai(apiKey: string, modelo: string, baseUrl?: string): Transporte {
+/** Isola o objeto JSON de respostas que vierem com cercas de markdown ou texto extra. */
+function extraiJson(texto: string): string {
+  const semCercas = texto.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '')
+  const inicio = semCercas.indexOf('{')
+  const fim = semCercas.lastIndexOf('}')
+  if (inicio >= 0 && fim > inicio) return semCercas.slice(inicio, fim + 1)
+  return semCercas.trim()
+}
+
+interface Opcoes {
+  apiKey: string
+  modelo: string
+  baseUrl?: string
+  /** Modo compatibilidade (Ollama, LM Studio, OpenRouter…): usa max_tokens e
+   *  cai para instrução de JSON em texto quando a API não suporta json_schema. */
+  compat?: boolean
+}
+
+export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }: Opcoes): Transporte {
   const client = new OpenAI({
-    apiKey,
+    // APIs locais como o Ollama não exigem chave, mas o SDK exige uma string
+    apiKey: apiKey || 'sem-chave',
     dangerouslyAllowBrowser: true,
     maxRetries: 3,
     ...(baseUrl ? { baseURL: baseUrl } : {}),
   })
 
+  // Alguns servidores compatíveis não aceitam max_completion_tokens (mais novo)
+  const limite = (n: number) => (compat ? { max_tokens: n } : { max_completion_tokens: n })
+
+  // Uma vez detectado que a API não suporta json_schema, usa sempre o fallback.
+  let usaFallbackJson = false
+
+  const chamadaEstruturada = async (
+    system: string,
+    user: string,
+    schema: Record<string, unknown>,
+    signal: AbortSignal | undefined,
+    comSchema: boolean,
+  ) => {
+    const pedidoJson = comSchema
+      ? {
+          response_format: {
+            type: 'json_schema' as const,
+            json_schema: { name: 'resposta_conselheiro', strict: true, schema },
+          },
+        }
+      : {}
+    const sufixo = comSchema
+      ? ''
+      : `\n\nIMPORTANTE: responda APENAS com um objeto JSON válido (sem markdown, sem texto antes ou depois) seguindo exatamente este JSON Schema:\n${JSON.stringify(schema)}`
+    const resposta = await client.chat.completions.create(
+      {
+        model: modelo,
+        ...limite(12000),
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user + sufixo },
+        ],
+        ...pedidoJson,
+      },
+      { signal },
+    )
+    const escolha = resposta.choices[0]
+    if (escolha?.message?.refusal) {
+      throw new Error('A API recusou esta solicitação por política de segurança.')
+    }
+    const texto = escolha?.message?.content
+    if (!texto) throw new Error('A API retornou uma resposta vazia.')
+    return comSchema ? texto : extraiJson(texto)
+  }
+
   return {
     async estruturada({ system, user, schema, signal }) {
       try {
-        const resposta = await client.chat.completions.create(
-          {
-            model: modelo,
-            max_completion_tokens: 12000,
-            messages: [
-              { role: 'system', content: system },
-              { role: 'user', content: user },
-            ],
-            response_format: {
-              type: 'json_schema',
-              json_schema: {
-                name: 'resposta_conselheiro',
-                strict: true,
-                schema: schema as Record<string, unknown>,
-              },
-            },
-          },
-          { signal },
-        )
-        const escolha = resposta.choices[0]
-        if (escolha?.message?.refusal) {
-          throw new Error('A API recusou esta solicitação por política de segurança.')
+        if (!usaFallbackJson) {
+          try {
+            return await chamadaEstruturada(system, user, schema, signal, true)
+          } catch (err) {
+            // API sem suporte a response_format json_schema → tenta via instrução
+            if (compat && err instanceof OpenAI.BadRequestError) {
+              usaFallbackJson = true
+            } else {
+              throw err
+            }
+          }
         }
-        const texto = escolha?.message?.content
-        if (!texto) throw new Error('A API retornou uma resposta vazia.')
-        return texto
+        return await chamadaEstruturada(system, user, schema, signal, false)
       } catch (err) {
         throw traduzErro(err)
       }
@@ -76,7 +129,7 @@ export function criaTransporteOpenai(apiKey: string, modelo: string, baseUrl?: s
         const stream = await client.chat.completions.create(
           {
             model: modelo,
-            max_completion_tokens: 16000,
+            ...limite(16000),
             stream: true,
             messages: [
               { role: 'system', content: system },
@@ -99,5 +152,26 @@ export function criaTransporteOpenai(apiKey: string, modelo: string, baseUrl?: s
         throw traduzErro(err)
       }
     },
+  }
+}
+
+/** Lista os modelos disponíveis na API (GET /models) — funciona com qualquer
+ *  API compatível com OpenAI: Ollama, LM Studio, OpenRouter, Groq, Gemini… */
+export async function listaModelosOpenai(apiKey: string, baseUrl?: string): Promise<string[]> {
+  try {
+    const client = new OpenAI({
+      apiKey: apiKey || 'sem-chave',
+      dangerouslyAllowBrowser: true,
+      maxRetries: 1,
+      ...(baseUrl ? { baseURL: baseUrl } : {}),
+    })
+    const ids: string[] = []
+    for await (const m of client.models.list()) {
+      ids.push(m.id)
+      if (ids.length >= 500) break
+    }
+    return ids.sort((a, b) => a.localeCompare(b))
+  } catch (err) {
+    throw traduzErro(err)
   }
 }

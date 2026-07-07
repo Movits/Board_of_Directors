@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { ConfigReuniao } from '../types'
 import { MEMBROS_VOTANTES } from '../board/members'
 import { infoProvedor } from '../api'
-import { leChave, leModeloDe, leProvedor } from '../lib/storage'
+import { leBaseUrlDe, leChave, leModeloDe, leModelosDescobertos, leProvedor } from '../lib/storage'
 
 interface Props {
   aoConvocar: (config: ConfigReuniao) => void
@@ -14,20 +14,31 @@ type ModoDebate = '1' | '2' | '3' | 'consenso'
 export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
   const provedor = leProvedor()
   const info = infoProvedor(provedor)
-  const temChave = leChave(provedor).length > 0
+  // Provedor personalizado: o que define "configurado" é a Base URL (chave é opcional)
+  const configurado =
+    info.baseUrl === 'obrigatoria' ? leBaseUrlDe(provedor).length > 0 : leChave(provedor).length > 0
 
   const modeloSalvo = leModeloDe(provedor)
-  const modeloNaLista = info.modelos.some((m) => m.id === modeloSalvo)
+  // Para o provedor personalizado, oferece os modelos descobertos via "Buscar modelos"
+  const modelosDisponiveis =
+    info.modelos.length > 0
+      ? info.modelos
+      : leModelosDescobertos(provedor)
+          .slice(0, 6)
+          .map((id) => ({ id, rotulo: id, detalhe: 'modelo da sua API' }))
+  const modeloNaLista = modelosDisponiveis.some((m) => m.id === modeloSalvo)
 
   const [ideia, setIdeia] = useState('')
-  const [modelo, setModelo] = useState(modeloNaLista ? modeloSalvo : 'personalizado')
+  const [modelo, setModelo] = useState(
+    modeloNaLista ? modeloSalvo : 'personalizado',
+  )
   const [modeloCustom, setModeloCustom] = useState(modeloNaLista ? '' : modeloSalvo)
   const [selecionados, setSelecionados] = useState<Set<string>>(
     new Set(MEMBROS_VOTANTES.map((m) => m.id)),
   )
   const [modoDebate, setModoDebate] = useState<ModoDebate>('1')
   const [gerarPrompt, setGerarPrompt] = useState(true)
-  const [demo, setDemo] = useState(!temChave)
+  const [demo, setDemo] = useState(!configurado)
 
   const alterna = (id: string) => {
     setSelecionados((atual) => {
@@ -52,12 +63,16 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
         </p>
       </section>
 
-      {!temChave && (
+      {!configurado && (
         <div className="aviso aviso-info">
-          <strong>Sem chave de API configurada para {info.rotulo}.</strong> A reunião rodará em{' '}
-          <em>modo demonstração</em> (respostas simuladas, sem custo).{' '}
+          <strong>
+            {info.baseUrl === 'obrigatoria'
+              ? `Nenhuma API configurada para ${info.rotulo}.`
+              : `Sem chave de API configurada para ${info.rotulo}.`}
+          </strong>{' '}
+          A reunião rodará em <em>modo demonstração</em> (respostas simuladas, sem custo).{' '}
           <button className="link" onClick={aoAbrirConfiguracoes}>
-            Configurar chave →
+            {info.baseUrl === 'obrigatoria' ? 'Configurar API →' : 'Configurar chave →'}
           </button>
         </div>
       )}
@@ -106,7 +121,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             </button>
           </legend>
           <div className="opcoes-modelo">
-            {info.modelos.map((m) => (
+            {modelosDisponiveis.map((m) => (
               <label key={m.id} className={`opcao-modelo ${modelo === m.id ? 'selecionada' : ''}`}>
                 <input
                   type="radio"
@@ -135,7 +150,13 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
                   className="entrada-modelo-custom"
                   value={modeloCustom}
                   onChange={(e) => setModeloCustom(e.target.value)}
-                  placeholder={provedor === 'anthropic' ? 'ex.: claude-sonnet-4-5' : 'ex.: gpt-5.4-nano'}
+                  placeholder={
+                    provedor === 'anthropic'
+                      ? 'ex.: claude-sonnet-4-5'
+                      : provedor === 'openai'
+                        ? 'ex.: gpt-5.4-nano'
+                        : 'ex.: llama3.3, qwen2.5-coder…'
+                  }
                   spellCheck={false}
                 />
               )}
@@ -194,11 +215,11 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             <input
               type="checkbox"
               checked={demo}
-              disabled={!temChave}
+              disabled={!configurado}
               onChange={(e) => setDemo(e.target.checked)}
             />
             <span>
-              Modo demonstração {!temChave && '(obrigatório sem chave de API)'}
+              Modo demonstração {!configurado && '(obrigatório sem API configurada)'}
               <small>Respostas simuladas para conhecer a interface, sem custo.</small>
             </span>
           </label>

@@ -406,6 +406,38 @@ input:focus {
   margin-top: 14px;
 }
 
+.presets-base-url {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.descoberta-modelos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.seletor-modelos {
+  flex: 1;
+  background: var(--fundo-2);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  color: var(--texto);
+  padding: 10px 12px;
+  font: inherit;
+  min-width: 0;
+}
+
+.campo-dica code {
+  background: var(--fundo-3);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.85em;
+}
+
 /* ── Sala de reunião ──────────────────────────────────────────────────── */
 
 .sala {

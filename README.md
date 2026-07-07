@@ -33,7 +33,7 @@ Todas as personas são **editáveis** em *Configurações → Personas dos conse
 
 Votos possíveis: ✅ Aprovar · ⚠️ Aprovar com ressalvas · ❌ Rejeitar.
 
-## Provedores de IA
+## Provedores de IA — use a API que quiser
 
 A lista de modelos muda conforme o provedor escolhido em **Configurações**:
 
@@ -41,8 +41,11 @@ A lista de modelos muda conforme o provedor escolhido em **Configurações**:
 |---|---|---|
 | **Claude (Anthropic)** — padrão | Opus 4.8 · Sonnet 5 · Haiku 4.5 | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
 | **OpenAI (GPT / Codex)** | GPT-5.5 · GPT-5.4 · GPT-5.4 mini | [platform.openai.com](https://platform.openai.com/api-keys) |
+| **Personalizado — qualquer API** | os da sua API (botão "Buscar modelos") | opcional para APIs locais |
 
-Também há a opção **"Personalizado…"** para digitar o ID de qualquer modelo, e uma **Base URL personalizada** para APIs compatíveis com OpenAI (OpenRouter, Groq, Gemini, Ollama…) — desde que a API aceite chamadas do navegador (CORS).
+O provedor **Personalizado** conecta qualquer API compatível com o protocolo da OpenAI — **Ollama local**, LM Studio, OpenRouter, Groq, Gemini, Mistral, vLLM… Basta informar a **Base URL** (há atalhos prontos), opcionalmente a chave, e usar o botão **"🔎 Buscar modelos"** para listar os modelos disponíveis na própria API. Para APIs que não suportam saída estruturada, a app cai automaticamente para instruções de JSON no prompt.
+
+> **Ollama local:** inicie com `OLLAMA_ORIGINS='*' ollama serve` (libera o CORS para o navegador) e use a Base URL `http://localhost:11434/v1`. Funciona direto no Chrome mesmo com o site em HTTPS, pois `localhost` é considerado seguro.
 
 ## Para usar
 
