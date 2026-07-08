@@ -7,7 +7,6 @@ import {
   gravaChave,
   gravaModeloDe,
   gravaModelosDescobertos,
-  gravaPersona,
   gravaProvedor,
   leBaseUrlDe,
   leChave,
@@ -16,6 +15,7 @@ import {
   lePersonas,
   leProvedor,
 } from '../lib/storage'
+import { PersonaForm } from './PersonaForm'
 
 export function Settings() {
   const inicial = leProvedor()
@@ -27,9 +27,10 @@ export function Settings() {
   const [descobertos, setDescobertos] = useState<string[]>(leModelosDescobertos(inicial))
   const [buscando, setBuscando] = useState(false)
   const [erroBusca, setErroBusca] = useState('')
-  const [personas, setPersonas] = useState<Record<string, string>>(lePersonas())
   const [aberto, setAberto] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
+  // força rerender quando uma persona é salva/restaurada dentro do PersonaForm
+  const [, setVersaoPersonas] = useState(0)
 
   const info = infoProvedor(provedor)
 
@@ -293,8 +294,7 @@ export function Settings() {
         </p>
         <ul className="lista-personas">
           {MEMBROS.map((m) => {
-            const customizado = personas[m.id] !== undefined
-            const valor = personas[m.id] ?? m.systemPrompt
+            const customizado = lePersonas()[m.id] !== undefined
             const abertoEste = aberto === m.id
             return (
               <li key={m.id} className="item-persona" style={{ ['--cor' as string]: m.cor }}>
@@ -311,38 +311,14 @@ export function Settings() {
                   <span className="persona-seta">{abertoEste ? '▴' : '▾'}</span>
                 </button>
                 {abertoEste && (
-                  <div className="persona-editor">
-                    <textarea
-                      rows={10}
-                      value={valor}
-                      onChange={(e) => setPersonas((p) => ({ ...p, [m.id]: e.target.value }))}
-                      spellCheck={false}
+                  <div className="persona-corpo">
+                    <PersonaForm
+                      membro={m}
+                      onSalvo={() => {
+                        setVersaoPersonas((v) => v + 1)
+                        confirmaSalvo()
+                      }}
                     />
-                    <div className="persona-acoes">
-                      <button
-                        className="botao-principal botao-compacto"
-                        onClick={() => {
-                          gravaPersona(m.id, personas[m.id] ?? m.systemPrompt)
-                          confirmaSalvo()
-                        }}
-                      >
-                        Salvar persona
-                      </button>
-                      <button
-                        disabled={!customizado}
-                        onClick={() => {
-                          gravaPersona(m.id, null)
-                          setPersonas((p) => {
-                            const novo = { ...p }
-                            delete novo[m.id]
-                            return novo
-                          })
-                          confirmaSalvo()
-                        }}
-                      >
-                        Restaurar padrão
-                      </button>
-                    </div>
                   </div>
                 )}
               </li>

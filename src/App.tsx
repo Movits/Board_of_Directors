@@ -67,7 +67,7 @@ export function App() {
       </main>
 
       <footer className="rodape">
-        Feito com a API da Anthropic · sua chave fica apenas no seu navegador ·{' '}
+        Conecte a API de IA que preferir · sua chave fica apenas no seu navegador ·{' '}
         <a href="https://github.com/Movits/Board_of_Directors" target="_blank" rel="noreferrer">
           código-fonte
         </a>

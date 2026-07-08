@@ -1,4 +1,4 @@
-import type { Provedor, Reuniao } from '../types'
+import type { ItemFeedback, Provedor, Reuniao } from '../types'
 
 const CHAVES = {
   apiKeyLegada: 'bod.apiKey',
@@ -11,9 +11,11 @@ const CHAVES = {
   modelosDescobertos: 'bod.modelosDescobertos',
   personas: 'bod.personas',
   historico: 'bod.historico',
+  feedback: 'bod.feedback',
 } as const
 
 const MAX_HISTORICO = 20
+const MAX_FEEDBACK_POR_MEMBRO = 10
 
 const MODELO_PADRAO: Record<Provedor, string> = {
   anthropic: 'claude-opus-4-8',
@@ -118,6 +120,25 @@ export function gravaPersona(membroId: string, systemPrompt: string | null): voi
     atual[membroId] = systemPrompt
   }
   grava(CHAVES.personas, atual)
+}
+
+// ── Feedback por conselheiro (aprendizado local do agente) ───────────────────
+type MapaFeedback = Record<string, ItemFeedback[]>
+
+export function leFeedback(membroId: string): ItemFeedback[] {
+  return le<MapaFeedback>(CHAVES.feedback, {})[membroId] ?? []
+}
+
+export function gravaFeedback(membroId: string, item: ItemFeedback): void {
+  const mapa = le<MapaFeedback>(CHAVES.feedback, {})
+  mapa[membroId] = [item, ...(mapa[membroId] ?? [])].slice(0, MAX_FEEDBACK_POR_MEMBRO)
+  grava(CHAVES.feedback, mapa)
+}
+
+export function removeFeedback(membroId: string, itemId: string): void {
+  const mapa = le<MapaFeedback>(CHAVES.feedback, {})
+  mapa[membroId] = (mapa[membroId] ?? []).filter((f) => f.id !== itemId)
+  grava(CHAVES.feedback, mapa)
 }
 
 // ── Histórico de reuniões ─────────────────────────────────────────────────────

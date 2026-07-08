@@ -37,6 +37,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
     new Set(MEMBROS_VOTANTES.map((m) => m.id)),
   )
   const [modoDebate, setModoDebate] = useState<ModoDebate>('1')
+  const [gerarPlano, setGerarPlano] = useState(true)
   const [gerarPrompt, setGerarPrompt] = useState(true)
   const [demo, setDemo] = useState(!configurado)
 
@@ -59,20 +60,16 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
         <p>
           Treze conselheiros com expertises diferentes — finanças, marketing, tecnologia, produto,
           design, vendas, jurídico e mais — analisam sua ideia, debatem entre si, votam e entregam
-          um prompt pronto para o Claude Code executar.
+          o plano detalhado e um prompt pronto para executar.
         </p>
       </section>
 
       {!configurado && (
         <div className="aviso aviso-info">
-          <strong>
-            {info.baseUrl === 'obrigatoria'
-              ? `Nenhuma API configurada para ${info.rotulo}.`
-              : `Sem chave de API configurada para ${info.rotulo}.`}
-          </strong>{' '}
-          A reunião rodará em <em>modo demonstração</em> (respostas simuladas, sem custo).{' '}
+          <strong>Nenhuma API de IA conectada.</strong> A reunião rodará em{' '}
+          <em>modo demonstração</em> (respostas simuladas, sem custo).{' '}
           <button className="link" onClick={aoAbrirConfiguracoes}>
-            {info.baseUrl === 'obrigatoria' ? 'Configurar API →' : 'Configurar chave →'}
+            Conectar uma API →
           </button>
         </div>
       )}
@@ -115,9 +112,9 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
       <div className="linha-opcoes">
         <fieldset className="campo campo-metade">
           <legend className="campo-rotulo">
-            Modelo · {info.rotulo}{' '}
+            Modelo{configurado ? ` · ${info.rotulo}` : ' — não configurado'}{' '}
             <button className="link link-sutil" onClick={aoAbrirConfiguracoes} type="button">
-              trocar provedor
+              {configurado ? 'trocar' : 'configurar'}
             </button>
           </legend>
           <div className="opcoes-modelo">
@@ -196,20 +193,37 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             </span>
           </fieldset>
 
-          <label className="alternador">
-            <input
-              type="checkbox"
-              checked={gerarPrompt}
-              onChange={(e) => setGerarPrompt(e.target.checked)}
-            />
-            <span>
-              Gerar prompt de execução para o Claude Code
-              <small>
-                Ao final, o conselho transforma a decisão em um prompt detalhado, pronto para colar
-                no Claude Code e executar a ideia.
-              </small>
-            </span>
-          </label>
+          <fieldset className="campo">
+            <legend className="campo-rotulo">Entregáveis ao final</legend>
+            <label className="alternador">
+              <input
+                type="checkbox"
+                checked={gerarPlano}
+                onChange={(e) => setGerarPlano(e.target.checked)}
+              />
+              <span>
+                📄 Plano detalhado (documento com PDF)
+                <small>
+                  Pesquisa de mercado, SWOT, cronograma, orçamento com gráficos e riscos — para
+                  avaliar a ideia antes de executar qualquer coisa.
+                </small>
+              </span>
+            </label>
+            <label className="alternador">
+              <input
+                type="checkbox"
+                checked={gerarPrompt}
+                onChange={(e) => setGerarPrompt(e.target.checked)}
+              />
+              <span>
+                🚀 Prompt de execução
+                <small>
+                  A decisão vira um prompt detalhado para colar no seu agente de programação
+                  preferido (Claude Code, Codex, Cursor…).
+                </small>
+              </span>
+            </label>
+          </fieldset>
 
           <label className="alternador">
             <input
@@ -238,6 +252,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             rodadasDebate: modoDebate === 'consenso' ? 1 : Number(modoDebate),
             ateConsenso: modoDebate === 'consenso',
             gerarPrompt,
+            gerarPlano,
             demo,
           })
         }

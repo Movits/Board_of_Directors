@@ -1,4 +1,4 @@
-import type { AnaliseDebate, AnaliseRodada1, Transporte, Voto } from '../types'
+import type { AnaliseDebate, AnaliseRodada1, Plano, Transporte, Voto } from '../types'
 import { MEMBROS } from './members'
 
 // Modo demonstração: simula as respostas do conselho sem chamar a API.
@@ -189,6 +189,12 @@ export function criaTransporteDemo(): Transporte {
   return {
     async estruturada({ user, membroId }) {
       await espera(600 + Math.random() * 1800)
+
+      if (user.includes('PLANO DE NEGÓCIO COMPLETO')) {
+        const ideia = user.match(/<ideia>\n([\s\S]*?)\n<\/ideia>/)?.[1] ?? 'sua ideia'
+        return JSON.stringify(planoDemo(ideia))
+      }
+
       const ehDebate = user.startsWith('Rodada de debate')
 
       if (!ehDebate) {
@@ -326,6 +332,71 @@ Construir a primeira versão do projeto descrito: "${resumo(ideia)}". O objetivo
 
 ---
 *Prompt gerado no modo demonstração.*`
+}
+
+function planoDemo(ideia: string): Plano {
+  return {
+    titulo: `Plano de Negócio — ${resumo(ideia)}`,
+    subtitulo: '[DEMO] Documento de exemplo gerado no modo demonstração',
+    resumo_executivo:
+      'Este é um plano de exemplo do modo demonstração. Com uma API de IA conectada, o conselho compila aqui a decisão da reunião em um plano completo e específico para a sua ideia.\n\nO conselho recomendou aprovar com ressalvas, condicionando o avanço às validações de demanda descritas no roadmap. O plano prioriza velocidade de aprendizado com investimento mínimo.',
+    publico_alvo:
+      'Adotantes iniciais urbanos, 25–45 anos, que já usam soluções digitais no dia a dia e valorizam conveniência — começando por um nicho específico antes de expandir.',
+    proposta_valor: 'O jeito mais simples de resolver o problema central do público, sem fricção e com confiança desde o primeiro uso.',
+    analise_mercado: {
+      visao_geral:
+        'Mercado em crescimento com concorrência fragmentada. As soluções atuais atendem mal o nicho inicial escolhido, criando espaço para entrada focada. Estimativa conservadora de mercado endereçável regional na casa de dezenas de milhares de clientes potenciais.',
+      concorrentes: [
+        { nome: 'Concorrente A (líder)', pontos_fortes: 'Marca conhecida e base grande de clientes', pontos_fracos: 'Experiência genérica; atendimento lento' },
+        { nome: 'Concorrente B (digital)', pontos_fortes: 'Produto moderno e preço agressivo', pontos_fracos: 'Não atende o nicho inicial; suporte fraco' },
+        { nome: 'Alternativa manual (status quo)', pontos_fortes: 'Custo zero e hábito estabelecido', pontos_fracos: 'Demorada, sujeita a erros e sem escala' },
+      ],
+    },
+    swot: {
+      forcas: ['Foco em nicho mal atendido', 'Custo de operação enxuto', 'Velocidade de iteração'],
+      fraquezas: ['Marca desconhecida', 'Time reduzido no início', 'Dependência do fundador'],
+      oportunidades: ['Mercado em digitalização', 'Parcerias com quem já tem a audiência', 'Expansão geográfica gradual'],
+      ameacas: ['Reação dos concorrentes grandes', 'Mudanças regulatórias', 'Custo de aquisição acima do previsto'],
+    },
+    pilares_estrategia: [
+      { titulo: 'Validar antes de escalar', descricao: 'Entrevistas, lista de espera e vendas manuais antes de qualquer investimento pesado em produto ou mídia.' },
+      { titulo: 'Nicho primeiro', descricao: 'Dominar um segmento específico e expandir por adjacência, em vez de atacar "todo mundo".' },
+      { titulo: 'Operação artesanal no início', descricao: 'Fazer manualmente o que não escala para aprender rápido, automatizando apenas o que provar valor.' },
+    ],
+    roadmap: [
+      { fase: 'Validação de demanda', duracao_semanas: 3, entregas: ['15 entrevistas com o público-alvo', 'Landing page com lista de espera', 'Teste de mensagem com verba mínima'] },
+      { fase: 'MVP e primeiros clientes', duracao_semanas: 5, entregas: ['MVP enxuto no ar', '10 conversas de venda', 'Primeiros 5 clientes pagantes'] },
+      { fase: 'Ajuste e repetibilidade', duracao_semanas: 6, entregas: ['Onboarding sem fricção', 'Métricas de retenção rodando', 'Processo de venda documentado'] },
+      { fase: 'Crescimento inicial', duracao_semanas: 8, entregas: ['Canal de aquisição validado', '30+ clientes ativos', 'Decisão de dobrar ou ajustar baseada em dados'] },
+    ],
+    orcamento: [
+      { categoria: 'Ferramentas e infraestrutura', valor_mensal_brl: 400, observacao: 'Hospedagem, domínio, ferramentas no-code e analytics' },
+      { categoria: 'Marketing e testes de mídia', valor_mensal_brl: 900, observacao: 'Verba de experimentos; só escala após validar mensagem' },
+      { categoria: 'Serviços profissionais', valor_mensal_brl: 600, observacao: 'Contabilidade e registro de marca (INPI) diluído' },
+      { categoria: 'Freelancers pontuais', valor_mensal_brl: 1200, observacao: 'Design e desenvolvimento sob demanda' },
+      { categoria: 'Reserva de imprevistos', valor_mensal_brl: 300, observacao: '~10% do orçamento total' },
+    ],
+    metricas: [
+      { nome: 'Inscritos na lista de espera', meta_90_dias: '300 inscritos', como_medir: 'Analytics da landing page' },
+      { nome: 'Clientes pagantes', meta_90_dias: '10 clientes', como_medir: 'Registros de venda' },
+      { nome: 'Retenção em 30 dias', meta_90_dias: '≥ 60%', como_medir: 'Eventos de uso no produto' },
+      { nome: 'Custo de aquisição (CAC)', meta_90_dias: '≤ R$ 80', como_medir: 'Verba de mídia ÷ novos clientes' },
+    ],
+    riscos: [
+      { risco: 'Demanda menor que o esperado no nicho', probabilidade: 'media', impacto: 'alta', mitigacao: 'Validar com lista de espera antes do MVP; pivotar o nicho se < 100 inscritos' },
+      { risco: 'CAC acima do sustentável', probabilidade: 'media', impacto: 'media', mitigacao: 'Priorizar canais orgânicos e parcerias; teto de verba por experimento' },
+      { risco: 'Dependência total do fundador', probabilidade: 'alta', impacto: 'media', mitigacao: 'Documentar processos desde o dia 1; primeiro freelancer recorrente na fase 3' },
+      { risco: 'Questões regulatórias/LGPD', probabilidade: 'baixa', impacto: 'alta', mitigacao: 'Termos e política de privacidade antes do lançamento; coleta mínima de dados' },
+    ],
+    proximos_passos: [
+      'Agendar as 15 entrevistas desta semana',
+      'Colocar a landing page com lista de espera no ar',
+      'Registrar a marca no INPI',
+      'Definir as 3 métricas no painel de acompanhamento',
+      'Rodar o primeiro teste de mensagem com verba mínima',
+      'Marcar a revisão do plano para daqui a 30 dias',
+    ],
+  }
 }
 
 // Garante que todo membro votante tem tema demo definido.

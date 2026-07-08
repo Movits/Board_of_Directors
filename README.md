@@ -1,6 +1,9 @@
 # 🏛️ Board of Directors — Conselho de Administração de IA
 
-Apresente uma ideia e um conselho de **13 conselheiros de IA** — cada um com expertise, personalidade e vieses próprios — analisa, propõe estratégias, **debate em rodadas** e **vota** na decisão. No final, a Presidente do Conselho consolida tudo em um veredito com plano de ação **e gera um prompt de execução detalhado, pronto para colar no Claude Code** e tirar a ideia do papel.
+Apresente uma ideia e um conselho de **13 conselheiros de IA** — cada um com expertise, personalidade e vieses próprios — analisa, propõe estratégias, **debate em rodadas** e **vota** na decisão. No final, a Presidente do Conselho consolida tudo em um veredito e entrega:
+
+- 📄 um **plano detalhado em documento visual** (análise de mercado, SWOT, cronograma, orçamento com gráficos, riscos) com **download em PDF** — para você avaliar antes de executar qualquer coisa;
+- 🚀 um **prompt de execução** pronto para colar no seu agente de programação preferido (Claude Code, Codex, Cursor…).
 
 **App:** `https://movits.github.io/Board_of_Directors/`
 
@@ -29,7 +32,11 @@ Todas as personas são **editáveis** em *Configurações → Personas dos conse
 1. **Análises independentes** — cada conselheiro estuda a ideia pela ótica da sua especialidade: análise, estratégias, riscos, perguntas críticas e voto preliminar.
 2. **Debate** (1, 2 ou 3 rodadas — ou **até consenso**) — cada um lê as posições dos colegas, rebate citando-os pelo nome e pode **mudar de voto**. No modo consenso, o debate se repete até todos votarem igual (máximo de 5 rodadas).
 3. **Síntese** — a Presidente consolida: placar, consensos, divergências, riscos e um plano de ação para 7/30/90 dias.
-4. **Prompt de execução** (opcional) — o conselho transforma a decisão em um prompt autossuficiente e detalhado (contexto, escopo do MVP, fora de escopo, stack, UX, critérios de aceitação, riscos, passo a passo) para colar no **Claude Code**. O conselho decide; o Claude Code executa.
+4. **Entregáveis** (opcionais) — 📄 o **plano detalhado** em documento visual com download em PDF (análise de mercado, SWOT, cronograma, orçamento com gráficos, riscos), e 🚀 o **prompt de execução** autossuficiente para colar num agente de programação. O conselho decide; quem executa é você — ou seu agente.
+
+### Treine cada conselheiro do seu jeito
+
+Clique em qualquer conselheiro para ver a análise completa e **avaliar as respostas com 👍/👎** (com comentário opcional). O feedback muda o comportamento **apenas daquele agente** nas próximas reuniões — os aprendizados ficam na aba *Configuração* da gaveta, onde também dá para **editar a persona** (system prompt) dele diretamente.
 
 Votos possíveis: ✅ Aprovar · ⚠️ Aprovar com ressalvas · ❌ Rejeitar.
 

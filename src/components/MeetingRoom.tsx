@@ -1,16 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ConfigReuniao, EstadoMembro, FaseReuniao, Reuniao } from '../types'
-import { MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from '../board/members'
+import type { ConfigReuniao, EstadoMembro, FaseReuniao, Plano, Reuniao } from '../types'
+import { MEMBROS, MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from '../board/members'
 import { conduzirReuniao, calculaPlacar } from '../board/orchestrator'
+import { personaEfetiva } from '../board/prompts'
 import { criaTransporte } from '../api'
 import { criaTransporteDemo } from '../board/demo'
-import { leBaseUrlDe, leChave, lePersonas, gravaReuniao } from '../lib/storage'
+import { leBaseUrlDe, leChave, leFeedback, lePersonas, gravaReuniao } from '../lib/storage'
 import { MemberCard } from './MemberCard'
 import { MemberDrawer } from './MemberDrawer'
 import { VoteTally } from './VoteTally'
 import { VerdictPanel } from './VerdictPanel'
 import { PromptPanel } from './PromptPanel'
+import { PlanDocument } from './PlanDocument'
 import { Timeline } from './Timeline'
+
+/** Prompt efetivo de cada membro: override do usuário (ou padrão) + feedback
+ *  local daquele agente — avaliações 👍/👎 só afetam o próprio conselheiro. */
+function montaPersonas(): Record<string, string> {
+  const overrides = lePersonas()
+  const personas: Record<string, string> = {}
+  for (const m of MEMBROS) {
+    personas[m.id] = personaEfetiva(overrides[m.id] ?? m.systemPrompt, leFeedback(m.id))
+  }
+  return personas
+}
 
 interface Props {
   config: ConfigReuniao
@@ -25,6 +38,7 @@ interface EstadoUI {
   statusPresidente: EstadoMembro['status']
   veredito: string
   promptExecucao: string
+  plano?: Plano
   consensoNaRodada?: number
   erro?: string
   reuniao?: Reuniao
@@ -39,6 +53,7 @@ function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
       statusPresidente: 'pronto',
       veredito: existente.veredito,
       promptExecucao: existente.promptExecucao ?? '',
+      plano: existente.plano,
       consensoNaRodada: existente.consensoNaRodada,
       reuniao: existente,
     }
@@ -60,6 +75,7 @@ function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
 export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
   const [estado, setEstado] = useState<EstadoUI>(() => estadoInicial(config, existente))
   const [membroAberto, setMembroAberto] = useState<string | null>(null)
+  const [planoAberto, setPlanoAberto] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const iniciadaRef = useRef(false)
 
@@ -80,7 +96,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
     conduzirReuniao({
       config,
       transporte,
-      personas: lePersonas(),
+      personas: montaPersonas(),
       abortar: abort.signal,
       eventos: {
         onFase: (fase, rodada) =>
@@ -117,6 +133,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
           })),
         onConsenso: (rodada) => setEstado((e) => ({ ...e, consensoNaRodada: rodada })),
         onVereditoDelta: (texto) => setEstado((e) => ({ ...e, veredito: e.veredito + texto })),
+        onPlano: (plano) => setEstado((e) => ({ ...e, plano })),
         onPromptDelta: (texto) =>
           setEstado((e) => ({ ...e, promptExecucao: e.promptExecucao + texto })),
         onConcluida: (reuniao) => {
@@ -155,6 +172,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
           rodadaDebate={estado.rodadaDebate}
           totalDebates={config.rodadasDebate}
           ateConsenso={config.ateConsenso ?? false}
+          gerarPlano={config.gerarPlano ?? false}
           gerarPrompt={config.gerarPrompt ?? false}
         />
       </div>
@@ -198,6 +216,26 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
             streamando={estado.fase === 'sintese'}
             reuniao={estado.reuniao}
           />
+          {(estado.plano || estado.fase === 'plano') && (
+            <section className="painel-plano">
+              <h3>📄 Plano detalhado</h3>
+              {estado.plano ? (
+                <>
+                  <p className="painel-plano-nota">
+                    Documento completo com análise de mercado, SWOT, cronograma, orçamento e
+                    riscos — para você avaliar antes de executar.
+                  </p>
+                  <button className="botao-principal botao-compacto" onClick={() => setPlanoAberto(true)}>
+                    Ver plano completo
+                  </button>
+                </>
+              ) : (
+                <p className="painel-plano-nota">
+                  <span className="cursor-piscando" /> A Presidente está elaborando o plano…
+                </p>
+              )}
+            </section>
+          )}
           <PromptPanel prompt={estado.promptExecucao} streamando={estado.fase === 'prompt'} />
           {!emAndamento && (
             <button className="botao-principal" onClick={aoNovaReuniao}>
@@ -213,6 +251,10 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
           estado={estado.membros[membroAberto]}
           aoFechar={() => setMembroAberto(null)}
         />
+      )}
+
+      {planoAberto && estado.plano && (
+        <PlanDocument plano={estado.plano} demo={config.demo} aoFechar={() => setPlanoAberto(false)} />
       )}
     </div>
   )

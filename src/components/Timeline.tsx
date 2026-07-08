@@ -5,13 +5,18 @@ interface Props {
   rodadaDebate: number
   totalDebates: number
   ateConsenso: boolean
+  gerarPlano: boolean
   gerarPrompt: boolean
 }
 
-export function Timeline({ fase, rodadaDebate, totalDebates, ateConsenso, gerarPrompt }: Props) {
-  const ordem: FaseReuniao[] = gerarPrompt
-    ? ['rodada1', 'debate', 'sintese', 'prompt']
-    : ['rodada1', 'debate', 'sintese']
+export function Timeline({ fase, rodadaDebate, totalDebates, ateConsenso, gerarPlano, gerarPrompt }: Props) {
+  const ordem: FaseReuniao[] = [
+    'rodada1',
+    'debate',
+    'sintese',
+    ...(gerarPlano ? (['plano'] as FaseReuniao[]) : []),
+    ...(gerarPrompt ? (['prompt'] as FaseReuniao[]) : []),
+  ]
 
   const indice =
     fase === 'preparando'
@@ -32,7 +37,8 @@ export function Timeline({ fase, rodadaDebate, totalDebates, ateConsenso, gerarP
     { rotulo: 'Análises', detalhe: 'cada conselheiro estuda a ideia' },
     { rotulo: rotuloDebate, detalhe: 'réplicas e revisão de votos' },
     { rotulo: 'Veredito', detalhe: 'a Presidente consolida e decide' },
-    ...(gerarPrompt ? [{ rotulo: 'Prompt p/ Claude Code', detalhe: 'plano pronto para executar' }] : []),
+    ...(gerarPlano ? [{ rotulo: 'Plano', detalhe: 'documento com pesquisa e números' }] : []),
+    ...(gerarPrompt ? [{ rotulo: 'Prompt de execução', detalhe: 'pronto para um agente executar' }] : []),
   ]
 
   return (

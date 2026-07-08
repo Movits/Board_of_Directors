@@ -10,9 +10,10 @@ import type {
   Transporte,
   Voto,
 } from '../types'
+import type { Plano } from '../types'
 import { MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from './members'
-import { SCHEMA_DEBATE, SCHEMA_RODADA1 } from './schemas'
-import { promptDebate, promptExecucao, promptRodada1, promptSintese } from './prompts'
+import { SCHEMA_DEBATE, SCHEMA_PLANO, SCHEMA_RODADA1 } from './schemas'
+import { promptDebate, promptExecucao, promptPlano, promptRodada1, promptSintese } from './prompts'
 
 const CONCORRENCIA = 4
 /** Teto de rodadas no modo "até consenso" — evita reuniões (e custos) infinitos. */
@@ -189,7 +190,29 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
     if (cancelado()) return null
     eventos.onStatusMembro(PRESIDENTE.id, 'pronto')
 
-    // ── Prompt de execução para o Claude Code (opcional, streamado) ─────────
+    // ── Plano detalhado (documento visual/PDF — opcional, estruturado) ──────
+    let plano: Plano | undefined
+    if (config.gerarPlano) {
+      eventos.onFase('plano')
+      eventos.onStatusMembro(PRESIDENTE.id, 'analisando')
+      const textoPlano = await transporte.estruturada({
+        system: personas[PRESIDENTE.id] ?? PRESIDENTE.systemPrompt,
+        user: promptPlano(
+          config.ideia,
+          ativos.map((m) => ({ membro: m, estado: membros[m.id] })),
+          veredito,
+        ),
+        schema: SCHEMA_PLANO as unknown as Record<string, unknown>,
+        membroId: PRESIDENTE.id,
+        signal: abortar,
+      })
+      if (cancelado()) return null
+      plano = parseJson<Plano>(textoPlano, 'plano')
+      eventos.onPlano(plano)
+      eventos.onStatusMembro(PRESIDENTE.id, 'pronto')
+    }
+
+    // ── Prompt de execução para agentes de programação (opcional, streamado) ─
     let promptExec: string | undefined
     if (config.gerarPrompt) {
       eventos.onFase('prompt')
@@ -218,6 +241,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
       membros,
       veredito,
       promptExecucao: promptExec,
+      plano,
       placar: calculaPlacar(membros),
       fase: 'concluida',
       consensoNaRodada,

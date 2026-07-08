@@ -44,8 +44,9 @@ export function PromptPanel({ prompt, streamando }: Props) {
         )}
       </div>
       <p className="painel-prompt-nota">
-        O conselho decide, mas não executa: cole este prompt no <strong>Claude Code</strong> (ou
-        outro agente de programação) para tirar o plano do papel.
+        O conselho decide, mas não executa: cole este prompt no seu{' '}
+        <strong>agente de programação</strong> preferido (Claude Code, Codex, Cursor…) para tirar o
+        plano do papel.
       </p>
       <pre className="prompt-texto" ref={preRef}>
         {prompt}

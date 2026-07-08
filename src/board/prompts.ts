@@ -1,9 +1,38 @@
-import type { AnaliseDebate, AnaliseRodada1, EstadoMembro, Membro, Voto } from '../types'
+import type { AnaliseDebate, AnaliseRodada1, EstadoMembro, ItemFeedback, Membro, Voto } from '../types'
 
 export const ROTULO_VOTO: Record<Voto, string> = {
   aprovar: 'Aprovar',
   aprovar_com_ressalvas: 'Aprovar com ressalvas',
   rejeitar: 'Rejeitar',
+}
+
+/** Monta o system prompt efetivo de um conselheiro: persona (override do
+ *  usuário ou padrão) + apêndice de feedback — o feedback só entra no prompt
+ *  do PRÓPRIO membro, mudando apenas o comportamento local dele. */
+export function personaEfetiva(base: string, feedback: ItemFeedback[]): string {
+  if (feedback.length === 0) return base
+  const positivos = feedback.filter((f) => f.gostou)
+  const negativos = feedback.filter((f) => !f.gostou)
+  const linhas: string[] = [
+    base,
+    '',
+    '---',
+    'FEEDBACK DO DONO DO CONSELHO sobre respostas SUAS em reuniões anteriores.',
+    'Ajuste seu comportamento de acordo — isso vale só para você, não para os outros conselheiros.',
+  ]
+  if (positivos.length > 0) {
+    linhas.push('', 'O que ele GOSTOU (continue fazendo assim):')
+    for (const f of positivos) {
+      linhas.push(`- "${f.trecho}"${f.comentario ? ` — comentário dele: ${f.comentario}` : ''}`)
+    }
+  }
+  if (negativos.length > 0) {
+    linhas.push('', 'O que ele NÃO GOSTOU (evite repetir):')
+    for (const f of negativos) {
+      linhas.push(`- "${f.trecho}"${f.comentario ? ` — comentário dele: ${f.comentario}` : ''}`)
+    }
+  }
+  return linhas.join('\n')
 }
 
 export function promptRodada1(ideia: string): string {
@@ -111,6 +140,42 @@ Escreva a síntese final do conselho em markdown, com esta estrutura:
 
 ## Palavra final da Presidente
 (seu conselho direto ao empreendedor, em tom humano)`
+}
+
+export function promptPlano(
+  ideia: string,
+  participantes: { membro: Membro; estado: EstadoMembro }[],
+  veredito: string,
+): string {
+  const recomendacoes = participantes
+    .filter(({ estado }) => estado.rodada1)
+    .map(({ membro, estado }) => {
+      const r1 = estado.rodada1!
+      return `### ${membro.cargo}\nEstratégias: ${r1.estrategias.join(' | ')}\nRiscos: ${r1.riscos.join(' | ')}`
+    })
+    .join('\n\n')
+
+  return `A reunião terminou. Agora, como Presidente, compile a decisão do conselho em um PLANO DE NEGÓCIO COMPLETO e bem pesquisado — ele virará um documento visual que o empreendedor vai avaliar antes de executar qualquer coisa.
+
+<ideia>
+${ideia}
+</ideia>
+
+<veredito_do_conselho>
+${veredito}
+</veredito_do_conselho>
+
+<recomendacoes_dos_conselheiros>
+${recomendacoes}
+</recomendacoes_dos_conselheiros>
+
+Diretrizes:
+- Incorpore as estratégias aprovadas e trate as ressalvas como restrições do plano.
+- Seja específico e prático: nomes de concorrentes reais quando conhecidos, números plausíveis.
+- Valores de orçamento em reais (BRL) mensais, como ESTIMATIVAS aproximadas e conservadoras.
+- O roadmap deve ter 3 a 5 fases com duração em semanas e entregas concretas.
+- 4 a 6 categorias de orçamento; 3 a 5 métricas; 3 a 6 riscos; 4 a 8 próximos passos.
+- Tudo em português do Brasil, direto e sem enrolação.`
 }
 
 export function promptExecucao(
