@@ -31,7 +31,7 @@ Todas as personas são **editáveis** em *Configurações → Personas dos conse
 
 Cada ideia apresentada vira um **projeto**, e o conselho trabalha nele **reunião após reunião**:
 
-- **Pitch rico** — além do texto, anexe **imagens, PDFs e arquivos de texto** (identidade visual, mockups, pesquisa) e **conecte um repositório do GitHub**: os conselheiros leem um digest do código (árvore de arquivos, README, dependências) e analisam o estado REAL do projeto.
+- **Pitch rico** — além do texto, anexe **imagens, PDFs e arquivos de texto** (identidade visual, mockups, pesquisa), **conecte um repositório do GitHub** ou **analise uma pasta local do seu computador** (para projetos ainda não publicados — o navegador lê o código aí mesmo). Nos três casos os conselheiros recebem um digest do código (árvore de arquivos, README, dependências, trechos) e analisam o estado REAL do projeto. A pasta local só sai do navegador ao ir para o provedor de IA na análise — e com *Rodar no Claude Code*, nem isso.
 - **Reuniões de acompanhamento** — na aba **Projetos**, abra um projeto e convoque a equipe de novo com uma **pauta** ("o que mudou, o que quero de vocês agora"). Os conselheiros recebem a ideia, os materiais, o repositório e o resumo da reunião anterior — e focam em **aperfeiçoar** o projeto, não só aprovar/rejeitar.
 - Anexos: até 5 arquivos (~3 MB no total, imagens são comprimidas automaticamente). PDFs são lidos nativamente pelo provedor Claude; nos demais provedores, envie imagens ou texto.
 

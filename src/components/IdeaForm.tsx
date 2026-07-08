@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import type { Anexo, ConfigReuniao, RepoConectado } from '../types'
+import { useEffect, useRef, useState } from 'react'
+import type { Anexo, ConfigReuniao, PastaLocal, RepoConectado } from '../types'
 import { MEMBROS_VOTANTES } from '../board/members'
 import { infoProvedor } from '../api'
 import {
@@ -23,6 +23,7 @@ import {
   tamanhoTotal,
 } from '../lib/anexos'
 import { lerRepositorio, parseRepo } from '../lib/github'
+import { lerPastaLocal } from '../lib/pastaLocal'
 import { promptParaClaudeCode } from '../board/claudeCode'
 import { ClaudeCodePanel } from './ClaudeCodePanel'
 
@@ -74,6 +75,33 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
   const [mostraToken, setMostraToken] = useState(false)
   const [githubToken, setGithubToken] = useState(() => leGithubToken())
   const [briefingCC, setBriefingCC] = useState<string | null>(null)
+
+  // Pasta local (projeto não publicado no GitHub)
+  const pastaRef = useRef<HTMLInputElement>(null)
+  const [pastaLocal, setPastaLocal] = useState<PastaLocal | null>(null)
+  const [lendoPasta, setLendoPasta] = useState(false)
+  const [erroPasta, setErroPasta] = useState('')
+
+  // O atributo webkitdirectory não é tipado no React — setamos via DOM.
+  useEffect(() => {
+    if (pastaRef.current) pastaRef.current.setAttribute('webkitdirectory', '')
+  }, [])
+
+  const analisaPasta = async (lista: FileList | null) => {
+    if (!lista || lista.length === 0) return
+    setLendoPasta(true)
+    setErroPasta('')
+    // cede um tick para o React pintar "Lendo a pasta…" antes do trabalho pesado
+    await new Promise((r) => setTimeout(r, 20))
+    try {
+      setPastaLocal(await lerPastaLocal(Array.from(lista)))
+    } catch (err) {
+      setErroPasta(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLendoPasta(false)
+      if (pastaRef.current) pastaRef.current.value = ''
+    }
+  }
 
   const escreveIdeia = (texto: string) => {
     setIdeia(texto)
@@ -174,6 +202,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
       ideia: ideia.trim(),
       anexos,
       repo: repo ?? undefined,
+      pastaLocal: pastaLocal ?? undefined,
       reunioesIds: [],
     })
     if (!gravado) {
@@ -314,6 +343,45 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
                 </div>
               )}
               {erroRepo && <div className="aviso aviso-erro">{erroRepo}</div>}
+            </>
+          )}
+        </div>
+
+        <div className="linha-repo">
+          <input
+            ref={pastaRef}
+            type="file"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e) => analisaPasta(e.target.files)}
+          />
+          {pastaLocal ? (
+            <div className="repo-conectado">
+              <span>
+                📁 Pasta analisada: <strong>{pastaLocal.nome}</strong>{' '}
+                <small>({pastaLocal.arquivos} arquivos · {new Date(pastaLocal.atualizadoEm).toLocaleDateString('pt-BR')})</small>
+              </span>
+              <button type="button" title="Remover pasta local" onClick={() => setPastaLocal(null)}>
+                ✕
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="botao-secundario"
+                onClick={() => pastaRef.current?.click()}
+                disabled={lendoPasta}
+              >
+                {lendoPasta ? 'Lendo a pasta…' : '📁 Analisar uma pasta do computador'}
+              </button>
+              <span className="campo-dica">
+                Tem um projeto <strong>ainda não publicado no GitHub</strong>? Escolha a pasta dele
+                — o navegador lê o código aí mesmo, monta um resumo (árvore, README, trechos) e o
+                conselho analisa. O conteúdo só sai do seu navegador ao ir para o provedor de IA na
+                análise; com <strong>Rodar no Claude Code</strong>, nem isso — fica tudo local.
+              </span>
+              {erroPasta && <div className="aviso aviso-erro">{erroPasta}</div>}
             </>
           )}
         </div>
@@ -510,6 +578,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
                   anexos,
                   repoResumo: repo?.resumo,
                   repoUrl: repo?.url,
+                  pastaLocal: pastaLocal ?? undefined,
                   rodadasDebate: modoDebate === 'consenso' ? 1 : Number(modoDebate),
                   ateConsenso: modoDebate === 'consenso',
                 }),

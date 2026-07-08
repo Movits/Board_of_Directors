@@ -60,8 +60,11 @@ export function promptRodada1(ideia: string, extras: ExtrasRodada1 = {}): string
     blocos.push(`Conteúdo dos anexos de texto:\n\n${extras.anexosTexto}`)
   }
   if (extras.repo) {
+    // O digest pode vir de um repositório do GitHub OU de uma pasta local
+    // (projeto ainda não publicado) — o próprio digest rotula a origem. Não
+    // afirmar aqui que existe repo no GitHub, para não induzir a análise.
     blocos.push(
-      `O projeto tem um repositório no GitHub conectado. Leia o digest abaixo e leve o estado REAL do código em conta na sua análise:\n\n<repositorio>\n${extras.repo}\n</repositorio>`,
+      `O projeto já tem código. Leia o digest abaixo (pode vir de um repositório ou de uma pasta local — a origem está indicada no próprio digest) e leve o estado REAL do código em conta na sua análise:\n\n<codigo_do_projeto>\n${extras.repo}\n</codigo_do_projeto>`,
     )
   }
 

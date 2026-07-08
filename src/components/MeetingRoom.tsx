@@ -13,6 +13,7 @@ import {
 import { personaEfetiva } from '../board/prompts'
 import { criaTransporte } from '../api'
 import { criaTransporteDemo } from '../board/demo'
+import { resumoDeCodigo } from '../lib/pastaLocal'
 import {
   anexaReuniaoAoProjeto,
   gravaReuniao,
@@ -79,6 +80,8 @@ interface EstadoUI {
   erroPlano?: string
   erroPrompt?: string
   regerando?: 'plano' | 'prompt'
+  /** localStorage estourou ao salvar a reunião concluída — precisa avisar. */
+  falhouSalvar?: boolean
 }
 
 function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
@@ -125,7 +128,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
   const anexos = useMemo(() => projeto?.anexos ?? [], [projeto])
   const contexto = useMemo<ContextoProjeto>(
     () => ({
-      repo: projeto?.repo?.resumo,
+      repo: resumoDeCodigo({ repo: projeto?.repo, pastaLocal: projeto?.pastaLocal }),
       reuniaoAnterior:
         config.pauta && config.projetoId ? resumoReuniaoAnterior(config.projetoId) : undefined,
     }),
@@ -208,9 +211,9 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
             tipo === 'plano' ? { ...e, erroPlano: mensagem } : { ...e, erroPrompt: mensagem },
           ),
         onConcluida: (reuniao) => {
-          gravaReuniao(reuniao)
-          if (config.projetoId) anexaReuniaoAoProjeto(config.projetoId, reuniao.id)
-          setEstado((e) => ({ ...e, reuniao }))
+          const salvou = gravaReuniao(reuniao)
+          if (salvou && config.projetoId) anexaReuniaoAoProjeto(config.projetoId, reuniao.id)
+          setEstado((e) => ({ ...e, reuniao, falhouSalvar: !salvou }))
         },
         onErro: (mensagem) => setEstado((e) => ({ ...e, erro: mensagem })),
       },
@@ -308,6 +311,15 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
       {estado.erro && (
         <div className="aviso aviso-erro">
           <strong>A reunião foi interrompida:</strong> {estado.erro}
+        </div>
+      )}
+
+      {estado.falhouSalvar && (
+        <div className="aviso aviso-erro">
+          <strong>Não foi possível salvar esta reunião</strong> — o armazenamento do navegador está
+          cheio. Ela <em>não</em> ficará no histórico do projeto. Use os botões de exportar no
+          veredito (Markdown, JSON ou Obsidian) para guardar o resultado agora, e depois exclua
+          projetos ou anexos antigos para liberar espaço.
         </div>
       )}
 

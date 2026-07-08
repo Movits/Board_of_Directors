@@ -9,6 +9,8 @@ export interface OpcoesClaudeCode {
   anexos?: Anexo[]
   repoResumo?: string
   repoUrl?: string
+  /** Pasta local do projeto (não publicada) — nome + digest. */
+  pastaLocal?: { nome: string; resumo: string }
   /** Debate: número de rodadas fixas. Ignorado quando ateConsenso. */
   rodadasDebate: number
   ateConsenso: boolean
@@ -44,6 +46,11 @@ export function promptParaClaudeCode(opts: OpcoesClaudeCode): string {
       `### Repositório do projeto\n${opts.repoUrl ? `O código está em ${opts.repoUrl} — se possível, **leia o repositório real** (clone ou abra a pasta) em vez de confiar só no resumo abaixo.\n\n` : ''}${opts.repoResumo ?? ''}`,
     )
   }
+  if (opts.pastaLocal) {
+    materiais.push(
+      `### Pasta local do projeto\nO projeto está numa pasta local chamada \`${opts.pastaLocal.nome}\` (ainda não publicada). **Abra essa pasta no Claude Code** (\`cd\` até ela, ou abra no editor) e **leia os arquivos de verdade** — o mapa e os trechos abaixo são só um resumo:\n\n${opts.pastaLocal.resumo}`,
+    )
+  }
 
   const cabecalho = opts.pauta
     ? `# Reunião de ACOMPANHAMENTO do Conselho de Administração
@@ -53,8 +60,9 @@ Você (Claude Code) já conhece este projeto e vai CONDUZIR uma reunião de acom
 
 Você (Claude Code) vai CONVOCAR E CONDUZIR uma reunião completa de um conselho de administração de IA sobre a ideia abaixo. Roda no seu plano — nenhuma API externa é necessária.`
 
-  const passo4 = opts.repoUrl
-    ? '4. **Entregáveis.** (a) um **plano de negócio** detalhado (público-alvo, mercado, SWOT, estratégia, roadmap, orçamento, métricas, riscos); (b) como este é um projeto de código, **ofereça implementar** as decisões direto no repositório — ou entregue um prompt de execução autossuficiente, se o empreendedor preferir revisar antes.'
+  const temCodigo = Boolean(opts.repoUrl || opts.pastaLocal)
+  const passo4 = temCodigo
+    ? '4. **Entregáveis.** (a) um **plano de negócio** detalhado (público-alvo, mercado, SWOT, estratégia, roadmap, orçamento, métricas, riscos); (b) como este é um projeto de código, **ofereça implementar** as decisões direto no projeto — ou entregue um prompt de execução autossuficiente, se o empreendedor preferir revisar antes.'
     : '4. **Entregáveis.** (a) um **plano de negócio** detalhado (público-alvo, mercado, SWOT, estratégia, roadmap, orçamento em BRL, métricas, riscos); (b) um **prompt de execução** autossuficiente, pronto para um agente de programação implementar a ideia.'
 
   return `${cabecalho}

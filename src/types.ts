@@ -29,6 +29,17 @@ export interface RepoConectado {
   atualizadoEm: string
 }
 
+/** Pasta local do computador do usuário, lida no navegador (não vai ao GitHub).
+ *  Para projetos ainda não publicados — os agentes analisam um digest do código. */
+export interface PastaLocal {
+  nome: string
+  /** Nº de arquivos (úteis) incluídos no digest. */
+  arquivos: number
+  /** Digest textual: árvore de arquivos, README, manifestos e trechos de código. */
+  resumo: string
+  atualizadoEm: string
+}
+
 /** Um projeto agrupa a ideia, os anexos, o repositório e TODAS as reuniões
  *  do conselho sobre ele — dá para voltar e continuar trabalhando com a equipe. */
 export interface Projeto {
@@ -40,6 +51,8 @@ export interface Projeto {
   ideia: string
   anexos: Anexo[]
   repo?: RepoConectado
+  /** Pasta local analisada (projeto ainda não publicado no GitHub). */
+  pastaLocal?: PastaLocal
   /** Ids das reuniões (no histórico), da mais antiga para a mais recente. */
   reunioesIds: string[]
 }

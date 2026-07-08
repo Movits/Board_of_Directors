@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ConfigReuniao, Projeto, Reuniao } from '../types'
 import { MEMBROS_VOTANTES } from '../board/members'
 import { infoProvedor } from '../api'
@@ -21,6 +21,7 @@ import {
   tamanhoTotal,
 } from '../lib/anexos'
 import { lerRepositorio, parseRepo } from '../lib/github'
+import { lerPastaLocal } from '../lib/pastaLocal'
 import { promptParaClaudeCode } from '../board/claudeCode'
 import { ClaudeCodePanel } from './ClaudeCodePanel'
 
@@ -39,6 +40,12 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
   const [lendoRepo, setLendoRepo] = useState(false)
   const [repoEntrada, setRepoEntrada] = useState('')
   const arquivoRef = useRef<HTMLInputElement>(null)
+  const pastaRef = useRef<HTMLInputElement>(null)
+  const [lendoPasta, setLendoPasta] = useState(false)
+
+  useEffect(() => {
+    if (pastaRef.current) pastaRef.current.setAttribute('webkitdirectory', '')
+  }, [])
 
   // Reunião de acompanhamento
   const [pauta, setPauta] = useState('')
@@ -119,6 +126,21 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
       setErro(err instanceof Error ? err.message : String(err))
     } finally {
       setLendoRepo(false)
+    }
+  }
+
+  const analisaPasta = async (lista: FileList | null) => {
+    if (!lista || lista.length === 0) return
+    setLendoPasta(true)
+    setErro('')
+    await new Promise((r) => setTimeout(r, 20))
+    try {
+      atualiza({ pastaLocal: await lerPastaLocal(Array.from(lista)) })
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLendoPasta(false)
+      if (pastaRef.current) pastaRef.current.value = ''
     }
   }
 
@@ -238,6 +260,52 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
                 {lendoRepo ? 'Lendo…' : '🔗 Conectar'}
               </button>
             </div>
+          )}
+        </div>
+
+        <div className="linha-repo">
+          <input
+            ref={pastaRef}
+            type="file"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e) => analisaPasta(e.target.files)}
+          />
+          {projeto.pastaLocal ? (
+            <div className="repo-conectado">
+              <span>
+                📁 <strong>{projeto.pastaLocal.nome}</strong>{' '}
+                <small>
+                  ({projeto.pastaLocal.arquivos} arquivos · lido em{' '}
+                  {new Date(projeto.pastaLocal.atualizadoEm).toLocaleDateString('pt-BR')})
+                </small>
+              </span>
+              <button
+                type="button"
+                className="botao-secundario"
+                onClick={() => pastaRef.current?.click()}
+                disabled={lendoPasta}
+              >
+                {lendoPasta ? 'Lendo…' : '↻ Reler pasta'}
+              </button>
+              <button
+                type="button"
+                title="Remover pasta local"
+                onClick={() => atualiza({ pastaLocal: undefined })}
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="botao-secundario"
+              onClick={() => pastaRef.current?.click()}
+              disabled={lendoPasta}
+              title="Projeto ainda não publicado no GitHub? Analise a pasta local"
+            >
+              {lendoPasta ? 'Lendo a pasta…' : '📁 Analisar uma pasta do computador'}
+            </button>
           )}
         </div>
         {erro && <div className="aviso aviso-erro">{erro}</div>}
@@ -363,6 +431,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
                     anexos: projeto.anexos,
                     repoResumo: projeto.repo?.resumo,
                     repoUrl: projeto.repo?.url,
+                    pastaLocal: projeto.pastaLocal,
                     rodadasDebate: modoDebate === 'consenso' ? 1 : Number(modoDebate),
                     ateConsenso: modoDebate === 'consenso',
                     pauta: pauta.trim(),

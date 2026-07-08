@@ -20,8 +20,11 @@ const ARQUIVOS_CHAVE = [
   'pom.xml',
 ]
 
-const IGNORAR = /(^|\/)(node_modules|dist|build|out|vendor|\.git|coverage|__pycache__|\.next|target)(\/|$)/
-const BINARIO = /\.(png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|mp[34]|webm|zip|gz|jar|pdf|lock)$/i
+// Compartilhados com a leitura de pasta local (src/lib/pastaLocal.ts).
+export const IGNORAR =
+  /(^|\/)(node_modules|dist|build|out|vendor|\.git|coverage|__pycache__|\.next|\.turbo|\.venv|venv|target|\.cache|\.idea|\.vscode)(\/|$)/
+export const BINARIO =
+  /\.(png|jpe?g|gif|webp|svg|ico|bmp|woff2?|ttf|eot|otf|mp[34]|wav|webm|mov|avi|zip|gz|tar|rar|7z|jar|pdf|lock|exe|dll|so|dylib|bin|dat|wasm|class|pyc)$/i
 
 /** Aceita URL completa ou "dono/repo". */
 export function parseRepo(entrada: string): { owner: string; repo: string } | null {

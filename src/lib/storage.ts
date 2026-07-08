@@ -159,10 +159,12 @@ export const gravaRascunho = (v: string): void => {
 
 // ── Histórico de reuniões ─────────────────────────────────────────────────────
 export const leHistorico = (): Reuniao[] => le(CHAVES.historico, [])
-/** Upsert por id: regravar a mesma reunião (ex.: após "Gerar novamente") atualiza em vez de duplicar. */
-export function gravaReuniao(reuniao: Reuniao): void {
+/** Upsert por id: regravar a mesma reunião (ex.: após "Gerar novamente") atualiza
+ *  em vez de duplicar. Retorna false se o localStorage estourou (a reunião paga
+ *  NÃO foi salva — quem chama deve avisar o usuário). */
+export function gravaReuniao(reuniao: Reuniao): boolean {
   const historico = [reuniao, ...leHistorico().filter((r) => r.id !== reuniao.id)].slice(0, MAX_HISTORICO)
-  grava(CHAVES.historico, historico)
+  return grava(CHAVES.historico, historico)
 }
 export function removeReuniao(id: string): void {
   grava(
@@ -205,13 +207,14 @@ export function removeProjeto(id: string): void {
   }
 }
 
-/** Anexa uma reunião concluída ao projeto e atualiza o carimbo de atividade. */
-export function anexaReuniaoAoProjeto(projetoId: string, reuniaoId: string): void {
+/** Anexa uma reunião concluída ao projeto e atualiza o carimbo de atividade.
+ *  Retorna false se o localStorage estourou. */
+export function anexaReuniaoAoProjeto(projetoId: string, reuniaoId: string): boolean {
   const projeto = leProjeto(projetoId)
-  if (!projeto) return
+  if (!projeto) return false
   if (!projeto.reunioesIds.includes(reuniaoId)) projeto.reunioesIds.push(reuniaoId)
   projeto.atualizadoEm = new Date().toISOString()
-  gravaProjeto(projeto)
+  return gravaProjeto(projeto)
 }
 
 /** Nome curto derivado da ideia (primeiras palavras). */

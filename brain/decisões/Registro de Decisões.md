@@ -34,6 +34,17 @@ produto.
   pacote jurídico (Sobre & privacidade + LICENSE MIT), texto a limpo.
 - Home em dois estados: sem API, só o botão "Conectar uma API de IA".
 
+## Rodada 9 — pasta local (projeto não publicado) (2026-07-08)
+- **Pasta local**: além do repositório do GitHub, dá para escolher uma pasta do
+  computador (projeto ainda não publicado). O navegador lê os arquivos ali mesmo
+  (`webkitdirectory`), monta um digest (árvore + README + trechos de código) e o
+  conselho analisa — sem servidor, sem publicar nada. Disponível no pitch novo
+  ([[Projetos|IdeaForm]]) e ao continuar um projeto ([[Projetos|ProjectPage]]).
+- **Segredos protegidos**: só arquivos de código/README têm o conteúdo lido; um
+  `.env` aparece na árvore, mas o valor secreto nunca entra no digest. O digest
+  é limitado (~48 KB) para caber no armazenamento local; entra no mesmo lugar do
+  repo no contexto da reunião ([[Armazenamento Local]]).
+
 ## Rodada 8 — rodar no plano do Claude Code (2026-07-08)
 - **[[Rodar no Claude Code]]**: botão que gera um briefing pronto (13 personas +
   ideia + anexos + repo) para colar no Claude Code — o conselho roda no plano

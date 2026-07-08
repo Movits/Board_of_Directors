@@ -11,8 +11,10 @@ Um projeto guarda:
 - a **ideia** base do pitch;
 - os **anexos** (imagens, PDFs, textos — identidade visual, mockups, pesquisa),
   comprimidos e limitados para caber no [[Armazenamento Local]];
-- o **repositório do GitHub** conectado — os agentes leem um digest (árvore de
-  arquivos, README, dependências) e analisam o estado real do código;
+- o **repositório do GitHub** conectado **ou uma pasta local** do computador
+  (para projetos ainda não publicados, lida no navegador via `webkitdirectory`)
+  — os agentes recebem um digest (árvore, README, dependências, trechos de
+  código) e analisam o estado real do projeto;
 - todas as **[[Reunião|reuniões]]** do conselho sobre ele.
 
 ## Reunião de acompanhamento
