@@ -21,6 +21,8 @@ import {
   tamanhoTotal,
 } from '../lib/anexos'
 import { lerRepositorio, parseRepo } from '../lib/github'
+import { promptParaClaudeCode } from '../board/claudeCode'
+import { ClaudeCodePanel } from './ClaudeCodePanel'
 
 interface Props {
   projetoId: string
@@ -43,6 +45,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
   const [modoDebate, setModoDebate] = useState<ModoDebate>('1')
   const [gerarPlano, setGerarPlano] = useState(false)
   const [gerarPrompt, setGerarPrompt] = useState(true)
+  const [briefingCC, setBriefingCC] = useState<string | null>(null)
 
   const provedor = leProvedor()
   const info = infoProvedor(provedor)
@@ -345,9 +348,31 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
         </div>
 
         <div className="acao-convocar">
-          <button className="botao-principal" disabled={motivoBloqueio !== null} onClick={convocarAcompanhamento}>
-            🔔 Convocar acompanhamento
-          </button>
+          <div className="botoes-convocar">
+            <button className="botao-principal" disabled={motivoBloqueio !== null} onClick={convocarAcompanhamento}>
+              🔔 Convocar acompanhamento
+            </button>
+            <button
+              className="botao-secundario botao-cc"
+              disabled={pautaCurta}
+              title="Roda o acompanhamento dentro do Claude Code, no seu plano — sem gastar API"
+              onClick={() =>
+                setBriefingCC(
+                  promptParaClaudeCode({
+                    ideia: projeto.ideia,
+                    anexos: projeto.anexos,
+                    repoResumo: projeto.repo?.resumo,
+                    repoUrl: projeto.repo?.url,
+                    rodadasDebate: modoDebate === 'consenso' ? 1 : Number(modoDebate),
+                    ateConsenso: modoDebate === 'consenso',
+                    pauta: pauta.trim(),
+                  }),
+                )
+              }
+            >
+              🖥 Rodar no Claude Code
+            </button>
+          </div>
           {motivoBloqueio ? (
             <span className="motivo-bloqueio">{motivoBloqueio}</span>
           ) : (
@@ -359,6 +384,8 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
           )}
         </div>
       </section>
+
+      {briefingCC && <ClaudeCodePanel prompt={briefingCC} aoFechar={() => setBriefingCC(null)} />}
     </div>
   )
 }

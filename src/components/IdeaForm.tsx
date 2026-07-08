@@ -23,6 +23,8 @@ import {
   tamanhoTotal,
 } from '../lib/anexos'
 import { lerRepositorio, parseRepo } from '../lib/github'
+import { promptParaClaudeCode } from '../board/claudeCode'
+import { ClaudeCodePanel } from './ClaudeCodePanel'
 
 interface Props {
   aoConvocar: (config: ConfigReuniao) => void
@@ -71,6 +73,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
   const [erroRepo, setErroRepo] = useState('')
   const [mostraToken, setMostraToken] = useState(false)
   const [githubToken, setGithubToken] = useState(() => leGithubToken())
+  const [briefingCC, setBriefingCC] = useState<string | null>(null)
 
   const escreveIdeia = (texto: string) => {
     setIdeia(texto)
@@ -492,15 +495,42 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
       </div>
 
       <div className="acao-convocar">
-        <button className="botao-principal" disabled={!pronto} onClick={convocar}>
-          🔔 Convocar o Conselho
-        </button>
+        <div className="botoes-convocar">
+          <button className="botao-principal" disabled={!pronto} onClick={convocar}>
+            🔔 Convocar o Conselho
+          </button>
+          <button
+            className="botao-secundario botao-cc"
+            disabled={faltaIdeia}
+            title="Roda o conselho dentro do Claude Code, no seu plano Pro/Max — sem gastar API"
+            onClick={() =>
+              setBriefingCC(
+                promptParaClaudeCode({
+                  ideia: ideia.trim(),
+                  anexos,
+                  repoResumo: repo?.resumo,
+                  repoUrl: repo?.url,
+                  rodadasDebate: modoDebate === 'consenso' ? 1 : Number(modoDebate),
+                  ateConsenso: modoDebate === 'consenso',
+                }),
+              )
+            }
+          >
+            🖥 Rodar no Claude Code
+          </button>
+        </div>
         {motivoBloqueio ? (
           <span className="motivo-bloqueio">{motivoBloqueio}</span>
         ) : (
           <span className="estimativa-chamadas">{estimativa}</span>
         )}
+        <span className="campo-dica">
+          Já paga o plano do Claude (Pro/Max)? Use <strong>Rodar no Claude Code</strong> — o
+          conselho roda no seu plano, sem gastar API.
+        </span>
       </div>
+
+      {briefingCC && <ClaudeCodePanel prompt={briefingCC} aoFechar={() => setBriefingCC(null)} />}
     </div>
   )
 }

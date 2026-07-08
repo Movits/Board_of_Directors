@@ -30,7 +30,8 @@ App: https://movits.github.io/Board_of_Directors/ · [[Visão Geral|arquitetura]
 ## Conceitos
 
 [[Projetos]] · [[Reunião]] · [[Debate]] · [[Consenso Pleno]] · [[Votos]] ·
-[[Entregáveis]] · [[Feedback Local]] · [[Modo Demonstração]] · [[Provedores]]
+[[Entregáveis]] · [[Rodar no Claude Code]] · [[Feedback Local]] ·
+[[Modo Demonstração]] · [[Provedores]]
 
 ## Arquitetura
 

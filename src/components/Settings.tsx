@@ -105,9 +105,15 @@ export function Settings() {
           <div className="aviso aviso-atencao">
             <strong>Assinatura ≠ API.</strong> A API da Anthropic usa <em>créditos próprios</em>,
             comprados em console.anthropic.com — ela é <strong>separada</strong> da assinatura do
-            claude.ai (Pro/Max) e <strong>não consome o limite do seu plano</strong>. Hoje não
-            existe forma de usar o plano aqui. Dica: compre um valor pequeno (ex.: US$5), defina um
-            limite de gasto e use Sonnet ou Haiku — rende dezenas de reuniões.
+            claude.ai (Pro/Max) e <strong>não consome o limite do seu plano</strong>. Dica: compre
+            um valor pequeno (ex.: US$5), defina um limite de gasto e use Sonnet ou Haiku — rende
+            dezenas de reuniões.
+            <br />
+            <br />
+            <strong>Quer usar o seu plano Pro/Max sem gastar API?</strong> Use o botão{' '}
+            <strong>🖥 Rodar no Claude Code</strong> na tela inicial: o conselho roda dentro do
+            Claude Code, no seu plano. (A Anthropic não permite apps de terceiros usarem a
+            autenticação da assinatura direto — por isso o caminho é rodar no próprio Claude Code.)
           </div>
         )}
         {info.urlChave ? (

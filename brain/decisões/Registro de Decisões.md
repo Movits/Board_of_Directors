@@ -34,6 +34,14 @@ produto.
   pacote jurídico (Sobre & privacidade + LICENSE MIT), texto a limpo.
 - Home em dois estados: sem API, só o botão "Conectar uma API de IA".
 
+## Rodada 8 — rodar no plano do Claude Code (2026-07-08)
+- **[[Rodar no Claude Code]]**: botão que gera um briefing pronto (13 personas +
+  ideia + anexos + repo) para colar no Claude Code — o conselho roda no plano
+  Pro/Max do usuário, sem gastar API; skill `board-of-directors` no repo.
+- Motivo: a Anthropic proíbe apps de terceiros usarem a auth da assinatura, e o
+  navegador bloqueia https→localhost — então o caminho é rodar dentro do
+  próprio Claude Code. Notas corrigidas em Configurações, About e README.
+
 ## Rodada 7 — pitch rico e projetos contínuos (2026-07-08)
 - **[[Projetos]]**: o Histórico virou Projetos — cada ideia vira um projeto com
   reuniões de acompanhamento (pauta + resumo da reunião anterior no contexto);

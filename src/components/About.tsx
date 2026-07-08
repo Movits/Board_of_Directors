@@ -62,6 +62,15 @@ export function About() {
           configuração, e o <strong>modo demonstração</strong> permite conhecer tudo sem gastar
           nada.
         </p>
+        <p>
+          <strong>Já paga o plano do Claude (Pro/Max)?</strong> O botão{' '}
+          <strong>🖥 Rodar no Claude Code</strong> gera um briefing pronto para colar numa sessão
+          do <a href="https://claude.com/claude-code" target="_blank" rel="noreferrer">Claude Code</a>:
+          o conselho roda dentro do seu plano, sem gastar API. Os créditos da API (console.anthropic.com)
+          são <strong>separados</strong> da assinatura do claude.ai — e a Anthropic não permite apps
+          de terceiros usarem a autenticação da assinatura, por isso o caminho é rodar no próprio
+          Claude Code.
+        </p>
       </section>
 
       <section className="cartao-config">

@@ -94,9 +94,17 @@ A tela inicial mostra, antes de convocar, **quantas chamadas de IA** a configura
 
 O modo "até consenso" pode multiplicar o custo (até 5 rodadas de debate). O prompt de execução adiciona ~1 chamada longa ao final.
 
+## Rodar no Claude Code — usa o seu plano Pro/Max, sem gastar API
+
+Já assina o Claude (Pro/Max) e não quer pagar API? Na tela inicial (e na página do projeto) há o botão **🖥 Rodar no Claude Code**: ele gera um **briefing pronto** para colar numa sessão do [Claude Code](https://claude.com/claude-code). O Claude Code convoca os 13 conselheiros (subagentes em paralelo), debate, vota e entrega veredito + plano + próximos passos — **rodando no seu plano, custo de API zero**. Se for projeto de código, ele lê o repositório de verdade e pode **implementar na hora**.
+
+Quem clona este repositório ganha também o **skill** `board-of-directors` (em `.claude/skills/`): rode `/board-of-directors "sua ideia"` dentro do Claude Code.
+
+> **Por que não conectar o app direto ao Claude Code?** A Anthropic **não permite** apps de terceiros usarem a autenticação da assinatura (claude.ai/Max) — e um navegador em `https://` não consegue falar com uma ponte local em `http://localhost` (bloqueio de conteúdo misto). Por isso o caminho é rodar dentro do próprio Claude Code.
+
 ### Assinatura do claude.ai ≠ créditos de API
 
-A API da Anthropic (console.anthropic.com) usa **créditos próprios, pagos por consumo** — ela é separada da assinatura do claude.ai (Pro/Max) e **não consome o limite do seu plano**; hoje não há forma de um app de terceiros gastar a franquia da assinatura. O caminho barato: compre um valor pequeno de créditos (ex.: US$5), defina limite de gasto e use **Sonnet ou Haiku**. Já o **prompt de execução** que o conselho entrega você cola no Claude Code ou no claude.ai — e aí sim usa o seu plano.
+A API da Anthropic (console.anthropic.com) usa **créditos próprios, pagos por consumo** — ela é separada da assinatura do claude.ai (Pro/Max) e **não consome o limite do seu plano**. Para rodar no app com custo mínimo: compre um valor pequeno de créditos (ex.: US$5), defina limite de gasto e use **Sonnet ou Haiku**. Para custo **zero** usando seu plano, veja *Rodar no Claude Code* acima.
 
 ### Segurança da chave
 
