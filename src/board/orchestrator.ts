@@ -62,6 +62,40 @@ export interface OpcoesReuniao {
   abortar?: AbortSignal
 }
 
+/** Contexto mínimo para gerar (ou regerar) um entregável após a síntese. */
+export interface ContextoEntregavel {
+  config: ConfigReuniao
+  transporte: Transporte
+  personas: Record<string, string>
+  participantes: { membro: Membro; estado: EstadoMembro }[]
+  veredito: string
+  abortar?: AbortSignal
+}
+
+export async function gerarPlano(ctx: ContextoEntregavel): Promise<Plano> {
+  const texto = await ctx.transporte.estruturada({
+    system: ctx.personas[PRESIDENTE.id] ?? PRESIDENTE.systemPrompt,
+    user: promptPlano(ctx.config.ideia, ctx.participantes, ctx.veredito),
+    schema: SCHEMA_PLANO as unknown as Record<string, unknown>,
+    membroId: PRESIDENTE.id,
+    signal: ctx.abortar,
+  })
+  return parseJson<Plano>(texto, 'plano')
+}
+
+export async function gerarPromptExecucao(
+  ctx: ContextoEntregavel,
+  onDelta: (texto: string) => void,
+): Promise<string> {
+  return ctx.transporte.streamada({
+    system: ctx.personas[PRESIDENTE.id] ?? PRESIDENTE.systemPrompt,
+    user: promptExecucao(ctx.config.ideia, ctx.participantes, ctx.veredito),
+    proposito: 'prompt',
+    onDelta,
+    signal: ctx.abortar,
+  })
+}
+
 export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | null> {
   const { config, transporte, personas, eventos, abortar } = opcoes
   const participantes: Membro[] = MEMBROS_VOTANTES.filter((m) => config.membrosIds.includes(m.id))
@@ -157,8 +191,11 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
             eventos.onDebate(m.id, rodada, resultado)
             eventos.onStatusMembro(m.id, 'pronto')
           } catch {
+            if (cancelado()) return
             // Falha no debate não derruba o membro: mantém posição da rodada anterior.
+            membros[m.id].falhasDebate = [...(membros[m.id].falhasDebate ?? []), rodada]
             membros[m.id].status = 'pronto'
+            eventos.onDebateFalhou(m.id, rodada)
             eventos.onStatusMembro(m.id, 'pronto')
           }
         }),
@@ -190,47 +227,46 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
     if (cancelado()) return null
     eventos.onStatusMembro(PRESIDENTE.id, 'pronto')
 
-    // ── Plano detalhado (documento visual/PDF — opcional, estruturado) ──────
+    // ── Entregáveis (opcionais e NÃO-fatais: falha aqui não perde a reunião) ─
+    const contexto: ContextoEntregavel = {
+      config,
+      transporte,
+      personas,
+      participantes: ativos.map((m) => ({ membro: m, estado: membros[m.id] })),
+      veredito,
+      abortar,
+    }
+
+    // Plano detalhado (documento visual/PDF — estruturado)
     let plano: Plano | undefined
     if (config.gerarPlano) {
       eventos.onFase('plano')
       eventos.onStatusMembro(PRESIDENTE.id, 'analisando')
-      const textoPlano = await transporte.estruturada({
-        system: personas[PRESIDENTE.id] ?? PRESIDENTE.systemPrompt,
-        user: promptPlano(
-          config.ideia,
-          ativos.map((m) => ({ membro: m, estado: membros[m.id] })),
-          veredito,
-        ),
-        schema: SCHEMA_PLANO as unknown as Record<string, unknown>,
-        membroId: PRESIDENTE.id,
-        signal: abortar,
-      })
-      if (cancelado()) return null
-      plano = parseJson<Plano>(textoPlano, 'plano')
-      eventos.onPlano(plano)
+      try {
+        plano = await gerarPlano(contexto)
+        if (cancelado()) return null
+        eventos.onPlano(plano)
+      } catch (err) {
+        if (cancelado()) return null
+        eventos.onEntregavelErro('plano', err instanceof Error ? err.message : String(err))
+      }
       eventos.onStatusMembro(PRESIDENTE.id, 'pronto')
     }
 
-    // ── Prompt de execução para agentes de programação (opcional, streamado) ─
+    // Prompt de execução para agentes de programação (streamado)
     let promptExec: string | undefined
     if (config.gerarPrompt) {
       eventos.onFase('prompt')
       eventos.onStatusMembro(PRESIDENTE.id, 'analisando')
-      promptExec = await transporte.streamada({
-        system: personas[PRESIDENTE.id] ?? PRESIDENTE.systemPrompt,
-        user: promptExecucao(
-          config.ideia,
-          ativos.map((m) => ({ membro: m, estado: membros[m.id] })),
-          veredito,
-        ),
-        proposito: 'prompt',
-        onDelta: (t) => {
+      try {
+        promptExec = await gerarPromptExecucao(contexto, (t) => {
           if (!cancelado()) eventos.onPromptDelta(t)
-        },
-        signal: abortar,
-      })
-      if (cancelado()) return null
+        })
+        if (cancelado()) return null
+      } catch (err) {
+        if (cancelado()) return null
+        eventos.onEntregavelErro('prompt', err instanceof Error ? err.message : String(err))
+      }
       eventos.onStatusMembro(PRESIDENTE.id, 'pronto')
     }
 

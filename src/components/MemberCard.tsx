@@ -24,6 +24,7 @@ interface Props {
 export function MemberCard({ membro, estado, presidente, aoClicar }: Props) {
   const voto = presidente ? undefined : votoFinalDe(estado)
   const mudouVoto = estado.debate?.some((d) => d.mudou_voto) ?? false
+  const falhouDebate = (estado.falhasDebate?.length ?? 0) > 0
 
   return (
     <button
@@ -43,6 +44,9 @@ export function MemberCard({ membro, estado, presidente, aoClicar }: Props) {
         <span className={`selo-voto ${VOTO_CURTO[voto].classe}`}>
           {VOTO_CURTO[voto].rotulo}
           {mudouVoto && <span title="Mudou de voto durante o debate"> 🔄</span>}
+          {falhouDebate && (
+            <span title="Uma chamada falhou durante o debate — manteve a posição anterior"> ⚠</span>
+          )}
         </span>
       ) : (
         <span className={`selo-status selo-${estado.status}`}>

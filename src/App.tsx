@@ -4,12 +4,14 @@ import { IdeaForm } from './components/IdeaForm'
 import { MeetingRoom } from './components/MeetingRoom'
 import { Settings } from './components/Settings'
 import { History } from './components/History'
+import { About } from './components/About'
 
 type Tela =
   | { tipo: 'inicio' }
   | { tipo: 'reuniao'; config: ConfigReuniao; existente?: Reuniao }
   | { tipo: 'configuracoes' }
   | { tipo: 'historico' }
+  | { tipo: 'sobre' }
 
 export function App() {
   const [tela, setTela] = useState<Tela>({ tipo: 'inicio' })
@@ -64,10 +66,15 @@ export function App() {
         {tela.tipo === 'historico' && (
           <History aoAbrir={(reuniao) => setTela({ tipo: 'reuniao', config: reuniao.config, existente: reuniao })} />
         )}
+        {tela.tipo === 'sobre' && <About />}
       </main>
 
       <footer className="rodape">
         Conecte a API de IA que preferir · sua chave fica apenas no seu navegador ·{' '}
+        <button className="link link-rodape" onClick={() => setTela({ tipo: 'sobre' })}>
+          sobre & privacidade
+        </button>{' '}
+        ·{' '}
         <a href="https://github.com/Movits/Board_of_Directors" target="_blank" rel="noreferrer">
           código-fonte
         </a>

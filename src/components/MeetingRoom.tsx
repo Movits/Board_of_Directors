@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ConfigReuniao, EstadoMembro, FaseReuniao, Plano, Reuniao } from '../types'
 import { MEMBROS, MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from '../board/members'
-import { conduzirReuniao, calculaPlacar } from '../board/orchestrator'
+import {
+  conduzirReuniao,
+  calculaPlacar,
+  gerarPlano,
+  gerarPromptExecucao,
+  type ContextoEntregavel,
+} from '../board/orchestrator'
 import { personaEfetiva } from '../board/prompts'
 import { criaTransporte } from '../api'
 import { criaTransporteDemo } from '../board/demo'
@@ -42,6 +48,10 @@ interface EstadoUI {
   consensoNaRodada?: number
   erro?: string
   reuniao?: Reuniao
+  /** Falha na geração de um entregável (a reunião continua válida). */
+  erroPlano?: string
+  erroPrompt?: string
+  regerando?: 'plano' | 'prompt'
 }
 
 function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
@@ -131,11 +141,26 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
               },
             },
           })),
+        onDebateFalhou: (membroId, rodada) =>
+          setEstado((e) => ({
+            ...e,
+            membros: {
+              ...e.membros,
+              [membroId]: {
+                ...e.membros[membroId],
+                falhasDebate: [...(e.membros[membroId].falhasDebate ?? []), rodada],
+              },
+            },
+          })),
         onConsenso: (rodada) => setEstado((e) => ({ ...e, consensoNaRodada: rodada })),
         onVereditoDelta: (texto) => setEstado((e) => ({ ...e, veredito: e.veredito + texto })),
         onPlano: (plano) => setEstado((e) => ({ ...e, plano })),
         onPromptDelta: (texto) =>
           setEstado((e) => ({ ...e, promptExecucao: e.promptExecucao + texto })),
+        onEntregavelErro: (tipo, mensagem) =>
+          setEstado((e) =>
+            tipo === 'plano' ? { ...e, erroPlano: mensagem } : { ...e, erroPrompt: mensagem },
+          ),
         onConcluida: (reuniao) => {
           gravaReuniao(reuniao)
           setEstado((e) => ({ ...e, reuniao }))
@@ -152,6 +177,59 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /** Refaz só a chamada do entregável que falhou e atualiza a reunião salva. */
+  const regerarEntregavel = async (tipo: 'plano' | 'prompt') => {
+    const transporte = config.demo
+      ? criaTransporteDemo()
+      : criaTransporte(config.provedor, {
+          apiKey: leChave(config.provedor),
+          modelo: config.modelo,
+          baseUrl: config.provedor === 'anthropic' ? undefined : leBaseUrlDe(config.provedor),
+        })
+    const contexto: ContextoEntregavel = {
+      config,
+      transporte,
+      personas: montaPersonas(),
+      participantes: MEMBROS_VOTANTES.filter((m) => estado.membros[m.id]?.rodada1).map((m) => ({
+        membro: m,
+        estado: estado.membros[m.id],
+      })),
+      veredito: estado.veredito,
+    }
+    setEstado((e) =>
+      tipo === 'plano'
+        ? { ...e, regerando: tipo, erroPlano: undefined }
+        : { ...e, regerando: tipo, erroPrompt: undefined, promptExecucao: '' },
+    )
+    try {
+      if (tipo === 'plano') {
+        const plano = await gerarPlano(contexto)
+        const reuniao = estado.reuniao ? { ...estado.reuniao, plano } : undefined
+        if (reuniao) gravaReuniao(reuniao)
+        setEstado((e) => ({ ...e, plano, reuniao: reuniao ?? e.reuniao, regerando: undefined }))
+      } else {
+        const promptExecucao = await gerarPromptExecucao(contexto, (t) =>
+          setEstado((e) => ({ ...e, promptExecucao: e.promptExecucao + t })),
+        )
+        const reuniao = estado.reuniao ? { ...estado.reuniao, promptExecucao } : undefined
+        if (reuniao) gravaReuniao(reuniao)
+        setEstado((e) => ({
+          ...e,
+          promptExecucao,
+          reuniao: reuniao ?? e.reuniao,
+          regerando: undefined,
+        }))
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setEstado((e) =>
+        tipo === 'plano'
+          ? { ...e, erroPlano: msg, regerando: undefined }
+          : { ...e, erroPrompt: msg, regerando: undefined },
+      )
+    }
+  }
 
   const participantes = MEMBROS_VOTANTES.filter((m) => config.membrosIds.includes(m.id))
   const placar = calculaPlacar(estado.membros)
@@ -216,10 +294,24 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
             streamando={estado.fase === 'sintese'}
             reuniao={estado.reuniao}
           />
-          {(estado.plano || estado.fase === 'plano') && (
+          {(estado.plano || estado.fase === 'plano' || estado.erroPlano) && (
             <section className="painel-plano">
               <h3>📄 Plano detalhado</h3>
-              {estado.plano ? (
+              {estado.erroPlano ? (
+                <>
+                  <p className="painel-plano-nota painel-erro-nota">
+                    ⚠️ A geração do plano falhou ({estado.erroPlano}). O restante da reunião foi
+                    salvo normalmente.
+                  </p>
+                  <button
+                    className="botao-principal botao-compacto"
+                    onClick={() => regerarEntregavel('plano')}
+                    disabled={estado.regerando === 'plano'}
+                  >
+                    {estado.regerando === 'plano' ? 'Gerando…' : '↻ Gerar novamente'}
+                  </button>
+                </>
+              ) : estado.plano ? (
                 <>
                   <p className="painel-plano-nota">
                     Documento completo com análise de mercado, SWOT, cronograma, orçamento e
@@ -236,7 +328,12 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
               )}
             </section>
           )}
-          <PromptPanel prompt={estado.promptExecucao} streamando={estado.fase === 'prompt'} />
+          <PromptPanel
+            prompt={estado.promptExecucao}
+            streamando={estado.fase === 'prompt' || estado.regerando === 'prompt'}
+            erro={estado.erroPrompt}
+            aoRegerar={() => regerarEntregavel('prompt')}
+          />
           {!emAndamento && (
             <button className="botao-principal" onClick={aoNovaReuniao}>
               ✨ Nova reunião
@@ -249,6 +346,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
         <MemberDrawer
           membro={membroPorId(membroAberto)!}
           estado={estado.membros[membroAberto]}
+          demo={config.demo}
           aoFechar={() => setMembroAberto(null)}
         />
       )}

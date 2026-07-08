@@ -163,8 +163,9 @@ export function Settings() {
             </div>
             <span className="campo-dica">
               A API precisa aceitar chamadas do navegador (CORS). Para <strong>Ollama local</strong>
-              : inicie com <code>OLLAMA_ORIGINS='*' ollama serve</code> e use{' '}
-              <code>http://localhost:11434/v1</code>.
+              : inicie com <code>OLLAMA_ORIGINS='https://movits.github.io' ollama serve</code> e use{' '}
+              <code>http://localhost:11434/v1</code> (o curinga <code>'*'</code> funciona, mas
+              libera para qualquer site — use só em testes).
             </span>
           </label>
         )}

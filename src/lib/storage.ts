@@ -12,13 +12,16 @@ const CHAVES = {
   personas: 'bod.personas',
   historico: 'bod.historico',
   feedback: 'bod.feedback',
+  rascunho: 'bod.rascunhoIdeia',
 } as const
 
 const MAX_HISTORICO = 20
 const MAX_FEEDBACK_POR_MEMBRO = 10
 
+// Sonnet como padrão: equilíbrio custo/qualidade protege quem está começando
+// (recomendação do conselho — Opus vira upgrade consciente).
 const MODELO_PADRAO: Record<Provedor, string> = {
-  anthropic: 'claude-opus-4-8',
+  anthropic: 'claude-sonnet-5',
   openai: 'gpt-5.5',
   custom: '',
 }
@@ -141,10 +144,15 @@ export function removeFeedback(membroId: string, itemId: string): void {
   grava(CHAVES.feedback, mapa)
 }
 
+// ── Rascunho da ideia (sobrevive à navegação para Configurações) ─────────────
+export const leRascunho = (): string => le(CHAVES.rascunho, '')
+export const gravaRascunho = (v: string): void => grava(CHAVES.rascunho, v)
+
 // ── Histórico de reuniões ─────────────────────────────────────────────────────
 export const leHistorico = (): Reuniao[] => le(CHAVES.historico, [])
+/** Upsert por id: regravar a mesma reunião (ex.: após "Gerar novamente") atualiza em vez de duplicar. */
 export function gravaReuniao(reuniao: Reuniao): void {
-  const historico = [reuniao, ...leHistorico()].slice(0, MAX_HISTORICO)
+  const historico = [reuniao, ...leHistorico().filter((r) => r.id !== reuniao.id)].slice(0, MAX_HISTORICO)
   grava(CHAVES.historico, historico)
 }
 export function removeReuniao(id: string): void {

@@ -3,9 +3,12 @@ import { useEffect, useRef, useState } from 'react'
 interface Props {
   prompt: string
   streamando: boolean
+  /** Mensagem de falha na geração — mostra o botão de tentar de novo. */
+  erro?: string
+  aoRegerar?: () => void
 }
 
-export function PromptPanel({ prompt, streamando }: Props) {
+export function PromptPanel({ prompt, streamando, erro, aoRegerar }: Props) {
   const [copiado, setCopiado] = useState(false)
   const fimRef = useRef<HTMLSpanElement>(null)
   const preRef = useRef<HTMLPreElement>(null)
@@ -14,7 +17,7 @@ export function PromptPanel({ prompt, streamando }: Props) {
     if (streamando) fimRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [prompt, streamando])
 
-  if (!prompt && !streamando) return null
+  if (!prompt && !streamando && !erro) return null
 
   const copiar = async () => {
     try {
@@ -43,16 +46,31 @@ export function PromptPanel({ prompt, streamando }: Props) {
           </button>
         )}
       </div>
-      <p className="painel-prompt-nota">
-        O conselho decide, mas não executa: cole este prompt no seu{' '}
-        <strong>agente de programação</strong> preferido (Claude Code, Codex, Cursor…) para tirar o
-        plano do papel.
-      </p>
-      <pre className="prompt-texto" ref={preRef}>
-        {prompt}
-        {streamando && <span className="cursor-piscando" aria-hidden />}
-        <span ref={fimRef} />
-      </pre>
+      {erro && !streamando ? (
+        <>
+          <p className="painel-prompt-nota painel-erro-nota">
+            ⚠️ A geração do prompt falhou ({erro}). O restante da reunião foi salvo normalmente.
+          </p>
+          {aoRegerar && (
+            <button className="botao-principal botao-compacto" onClick={aoRegerar}>
+              ↻ Gerar novamente
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="painel-prompt-nota">
+            O conselho decide, mas não executa: cole este prompt no seu{' '}
+            <strong>agente de programação</strong> preferido (Claude Code, Codex, Cursor…) para
+            tirar o plano do papel.
+          </p>
+          <pre className="prompt-texto" ref={preRef}>
+            {prompt}
+            {streamando && <span className="cursor-piscando" aria-hidden />}
+            <span ref={fimRef} />
+          </pre>
+        </>
+      )}
     </section>
   )
 }

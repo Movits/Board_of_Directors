@@ -79,12 +79,21 @@ export function PlanDocument({ plano, demo, aoFechar }: Props) {
   const data = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
-    <div className="documento-overlay">
+    <div
+      className="documento-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Plano detalhado: ${plano.titulo}`}
+    >
       <div className="documento-barra">
         <span className="documento-barra-titulo">📄 {plano.titulo}</span>
         <div className="documento-barra-acoes">
-          <button className="botao-principal botao-compacto" onClick={() => window.print()}>
-            ⬇︎ Baixar PDF
+          <button
+            className="botao-principal botao-compacto"
+            onClick={() => window.print()}
+            title="Abre a impressão do navegador — escolha “Salvar como PDF” como destino"
+          >
+            🖨 Salvar em PDF
           </button>
           <button className="documento-fechar" onClick={aoFechar}>
             ✕ Fechar
@@ -100,6 +109,10 @@ export function PlanDocument({ plano, demo, aoFechar }: Props) {
           <h1>{plano.titulo}</h1>
           <p className="doc-capa-sub">{plano.subtitulo}</p>
           <p className="doc-capa-data">{data}</p>
+          <p className="doc-capa-disclaimer">
+            Conteúdo gerado por inteligência artificial — valide números, prazos e decisões de
+            forma independente antes de investir.
+          </p>
         </header>
 
         {/* ── Resumo executivo ─────────────────────────────────────────── */}

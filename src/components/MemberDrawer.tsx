@@ -80,10 +80,12 @@ function FeedbackResposta({ membroId, origem, texto }: FeedbackProps) {
 interface Props {
   membro: Membro
   estado: EstadoMembro
+  /** No modo demonstração o feedback fica desativado (respostas simuladas). */
+  demo?: boolean
   aoFechar: () => void
 }
 
-export function MemberDrawer({ membro, estado, aoFechar }: Props) {
+export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
   const [aba, setAba] = useState<'reuniao' | 'config'>('reuniao')
   const [feedbacks, setFeedbacks] = useState<ItemFeedback[]>(() => leFeedback(membro.id))
 
@@ -98,7 +100,13 @@ export function MemberDrawer({ membro, estado, aoFechar }: Props) {
 
   return (
     <div className="gaveta-fundo" onClick={aoFechar}>
-      <aside className="gaveta" onClick={(e) => e.stopPropagation()}>
+      <aside
+        className="gaveta"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${membro.nome} — ${membro.cargo}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <header className="gaveta-cabecalho" style={{ ['--cor' as string]: membro.cor }}>
           <span className="gaveta-avatar">{membro.emoji}</span>
           <div>
@@ -121,7 +129,7 @@ export function MemberDrawer({ membro, estado, aoFechar }: Props) {
               setAba('config')
             }}
           >
-            ⚙️ Configuração
+            🎭 Persona
           </button>
         </nav>
 
@@ -170,11 +178,18 @@ export function MemberDrawer({ membro, estado, aoFechar }: Props) {
                     ))}
                   </ul>
                 </section>
-                <FeedbackResposta
-                  membroId={membro.id}
-                  origem="analise"
-                  texto={`[Análise] ${r1.analise} | Estratégias: ${r1.estrategias.join('; ')}`}
-                />
+                {demo ? (
+                  <p className="feedback-demo-nota">
+                    👍/👎 desativados no modo demonstração — as respostas são simuladas. Conecte
+                    uma API para treinar este conselheiro com seu feedback.
+                  </p>
+                ) : (
+                  <FeedbackResposta
+                    membroId={membro.id}
+                    origem="analise"
+                    texto={`[Análise] ${r1.analise} | Estratégias: ${r1.estrategias.join('; ')}`}
+                  />
+                )}
                 {(estado.debate ?? []).map((d, i) => (
                   <section key={i} className="bloco-debate">
                     <h3>
@@ -191,13 +206,22 @@ export function MemberDrawer({ membro, estado, aoFechar }: Props) {
                       <br />
                       <em>{d.justificativa}</em>
                     </p>
-                    <FeedbackResposta
-                      membroId={membro.id}
-                      origem="debate"
-                      texto={`[Debate ${i + 1}] ${d.reacoes.map((r) => `para ${r.para}: ${r.comentario}`).join(' | ')} | ${d.justificativa}`}
-                    />
+                    {!demo && (
+                      <FeedbackResposta
+                        membroId={membro.id}
+                        origem="debate"
+                        texto={`[Debate ${i + 1}] ${d.reacoes.map((r) => `para ${r.para}: ${r.comentario}`).join(' | ')} | ${d.justificativa}`}
+                      />
+                    )}
                   </section>
                 ))}
+                {(estado.falhasDebate?.length ?? 0) > 0 && (
+                  <p className="nota-falha-debate">
+                    ⚠ A chamada de debate falhou na rodada{' '}
+                    {estado.falhasDebate!.join(', ')} — este conselheiro manteve a posição
+                    anterior nessas rodadas.
+                  </p>
+                )}
               </>
             )}
           </div>

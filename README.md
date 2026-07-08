@@ -46,13 +46,13 @@ A lista de modelos muda conforme o provedor escolhido em **Configurações**:
 
 | Provedor | Modelos | Chave |
 |---|---|---|
-| **Claude (Anthropic)** — padrão | Opus 4.8 · Sonnet 5 · Haiku 4.5 | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
+| **Claude (Anthropic)** — padrão | Sonnet 5 (padrão) · Opus 4.8 · Haiku 4.5 | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
 | **OpenAI (GPT / Codex)** | GPT-5.5 · GPT-5.4 · GPT-5.4 mini | [platform.openai.com](https://platform.openai.com/api-keys) |
 | **Personalizado — qualquer API** | os da sua API (botão "Buscar modelos") | opcional para APIs locais |
 
 O provedor **Personalizado** conecta qualquer API compatível com o protocolo da OpenAI — **Ollama local**, LM Studio, OpenRouter, Groq, Gemini, Mistral, vLLM… Basta informar a **Base URL** (há atalhos prontos), opcionalmente a chave, e usar o botão **"🔎 Buscar modelos"** para listar os modelos disponíveis na própria API. Para APIs que não suportam saída estruturada, a app cai automaticamente para instruções de JSON no prompt.
 
-> **Ollama local:** inicie com `OLLAMA_ORIGINS='*' ollama serve` (libera o CORS para o navegador) e use a Base URL `http://localhost:11434/v1`. Funciona direto no Chrome mesmo com o site em HTTPS, pois `localhost` é considerado seguro.
+> **Ollama local:** inicie com `OLLAMA_ORIGINS='https://movits.github.io' ollama serve` (libera o CORS só para o app) e use a Base URL `http://localhost:11434/v1`. Funciona direto no Chrome mesmo com o site em HTTPS, pois `localhost` é considerado seguro. O curinga `OLLAMA_ORIGINS='*'` também funciona, mas libera a API para qualquer site — prefira-o apenas em testes.
 
 ## Para usar
 
@@ -66,9 +66,11 @@ Sem chave, a app roda em **modo demonstração** (respostas simuladas, sem custo
 
 | Modelo | Custo estimado |
 |---|---|
-| Claude Opus 4.8 (padrão, máxima qualidade) | ~US$ 1–2 |
-| Claude Sonnet 5 (equilíbrio) | ~US$ 0,30–0,60 |
+| Claude Sonnet 5 (padrão — equilíbrio custo/qualidade) | ~US$ 0,30–0,60 |
+| Claude Opus 4.8 (máxima qualidade) | ~US$ 1–2 |
 | Claude Haiku 4.5 (rápido e barato) | ~US$ 0,10 |
+
+A tela inicial mostra, antes de convocar, **quantas chamadas de IA** a configuração escolhida fará.
 
 O modo "até consenso" pode multiplicar o custo (até 5 rodadas de debate). O prompt de execução adiciona ~1 chamada longa ao final.
 
@@ -91,3 +93,7 @@ Stack: React + TypeScript + Vite + [`@anthropic-ai/sdk`](https://github.com/anth
 O workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) faz build e publica no GitHub Pages a cada push na `main` (ou manualmente via *Actions → Run workflow*).
 
 > **Ativação necessária (uma vez):** no repositório, vá em **Settings → Pages → Build and deployment → Source** e selecione **GitHub Actions**.
+
+## Licença
+
+[MIT](LICENSE). Todo o conteúdo produzido pelo conselho é **gerado por IA e pode conter erros** — valide números e decisões de forma independente. Detalhes em *sobre & privacidade* dentro do app.

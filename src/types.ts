@@ -82,6 +82,8 @@ export interface EstadoMembro {
   erro?: string
   rodada1?: AnaliseRodada1
   debate?: AnaliseDebate[]
+  /** Rodadas de debate em que a chamada falhou (o membro manteve a posição). */
+  falhasDebate?: number[]
 }
 
 export type FaseReuniao =
@@ -136,9 +138,12 @@ export interface EventosReuniao {
   onRodada1: (membroId: string, resultado: AnaliseRodada1) => void
   onDebate: (membroId: string, rodada: number, resultado: AnaliseDebate) => void
   onConsenso: (rodada: number) => void
+  onDebateFalhou: (membroId: string, rodada: number) => void
   onVereditoDelta: (texto: string) => void
   onPlano: (plano: Plano) => void
   onPromptDelta: (texto: string) => void
+  /** Falha na geração de um entregável — NÃO derruba a reunião. */
+  onEntregavelErro: (tipo: 'plano' | 'prompt', mensagem: string) => void
   onConcluida: (reuniao: Reuniao) => void
   onErro: (mensagem: string) => void
 }

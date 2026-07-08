@@ -49,6 +49,21 @@ button {
   cursor: pointer;
 }
 
+/* ── Acessibilidade: foco visível para navegação por teclado ───────────── */
+
+:focus-visible {
+  outline: 2px solid var(--ouro-claro);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Os radios de modelo/debate são visualmente ocultos: o foco aparece no cartão */
+.opcao-modelo:focus-within,
+.opcao-debate:focus-within {
+  outline: 2px solid var(--ouro-claro);
+  outline-offset: 2px;
+}
+
 a {
   color: var(--ouro-claro);
 }
@@ -269,7 +284,9 @@ input:focus {
   transition: border-color 0.15s;
 }
 
-.opcao-modelo input {
+/* Esconde só o radio — o campo de texto do modelo personalizado fica visível
+   (a regra genérica escondia o campo e tornava a opção "Personalizado…" inusável). */
+.opcao-modelo input[type='radio'] {
   position: absolute;
   opacity: 0;
 }
@@ -400,6 +417,71 @@ input:focus {
   font-family: ui-monospace, 'Cascadia Code', Menlo, monospace;
   font-size: 0.85rem;
   padding: 8px 12px;
+}
+
+/* ── Cartão "conectar API" (home sem API configurada) ─────────────────── */
+
+.cartao-conectar {
+  border: 1px dashed var(--borda);
+  border-radius: var(--raio);
+  background: var(--fundo-2);
+  padding: 20px;
+  gap: 12px;
+}
+
+.conectar-texto {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--texto-suave);
+}
+
+.conectar-texto strong {
+  color: var(--texto);
+}
+
+.botao-conectar {
+  align-self: stretch;
+  text-align: center;
+}
+
+/* ── Ação de convocar + estimativa de chamadas ─────────────────────────── */
+
+.acao-convocar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.motivo-bloqueio,
+.estimativa-chamadas {
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}
+
+.motivo-bloqueio {
+  color: var(--ambar);
+}
+
+.painel-erro-nota {
+  color: var(--vermelho);
+}
+
+.feedback-demo-nota,
+.nota-falha-debate {
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  background: var(--fundo-2);
+  border: 1px dashed var(--borda);
+  border-radius: var(--raio);
+  padding: 10px 14px;
+}
+
+.link-rodape {
+  color: var(--ouro-claro);
+  text-decoration: underline;
+  padding: 0;
+  font-size: inherit;
 }
 
 .campo-base-url {
@@ -1596,6 +1678,17 @@ input:focus {
   font-size: 0.85rem;
 }
 
+.doc-capa-disclaimer {
+  margin: 14px auto 0;
+  max-width: 440px;
+  font-size: 0.75rem;
+  color: #8a7a4d;
+  border: 1px solid #ddd3ba;
+  border-radius: 6px;
+  padding: 8px 14px;
+  background: #f7f3e8;
+}
+
 .doc-destaques {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1874,6 +1967,44 @@ input:focus {
 }
 
 /* ── Responsivo ───────────────────────────────────────────────────────── */
+
+/* Documento do plano legível no celular: 1 coluna, tabelas com scroll */
+@media (max-width: 700px) {
+  .documento-overlay {
+    padding: 56px 8px 32px;
+  }
+
+  .documento {
+    padding: 28px 20px;
+  }
+
+  .doc-swot,
+  .doc-destaques {
+    grid-template-columns: 1fr;
+  }
+
+  .doc-tabela {
+    display: block;
+    overflow-x: auto;
+    white-space: normal;
+  }
+
+  .barra-linha,
+  .gantt-linha {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .barra-rotulo,
+  .gantt-rotulo {
+    width: 100%;
+    text-align: left;
+  }
+
+  .documento-barra-titulo {
+    font-size: 0.85rem;
+  }
+}
 
 @media (max-width: 640px) {
   .app {
