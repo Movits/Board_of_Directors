@@ -44,3 +44,8 @@ App: https://movits.github.io/Board_of_Directors/ · [[Visão Geral|arquitetura]
 
 As atas exportadas do app (botão 🧠) vivem em `reuniões/` —
 ver [[Sobre esta pasta]].
+
+## Manter atualizado
+
+Para receber as novas notas do projeto sem digitar git, veja
+[[Manter atualizado]] (plugin Obsidian Git com pull automático).

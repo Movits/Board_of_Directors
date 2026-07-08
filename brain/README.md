@@ -1,7 +1,7 @@
 # 🧠 Second brain do Board of Directors
 
 Esta pasta é um **vault do Obsidian**: o cérebro do projeto, com as notas
-conectadas por [[wikilinks]] — conselheiros, conceitos, arquitetura, decisões e
+conectadas por *wikilinks* — conselheiros, conceitos, arquitetura, decisões e
 as atas das reuniões.
 
 ## Como ter esta pasta no seu computador

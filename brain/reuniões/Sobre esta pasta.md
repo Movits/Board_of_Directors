@@ -11,7 +11,7 @@ painel do veredito e em cada item do Histórico. Ele baixa um arquivo
 
 - frontmatter YAML (data, placar, situação do [[Consenso Pleno]], modelo…),
   pronto para consultas do Obsidian (Dataview etc.);
-- [[wikilinks]] para as notas dos conselheiros — a ata se conecta sozinha ao
+- *wikilinks* para as notas dos conselheiros — a ata se conecta sozinha ao
   grafo;
 - análises, [[Debate|debates]] com ressalvas pendentes por rodada, veredito
   íntegro e o prompt de execução.
