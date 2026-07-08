@@ -6,3 +6,6 @@ dist/
 
 # Configuração local do Obsidian (cada máquina tem a sua)
 brain/.obsidian/
+
+# Gerado no build a partir de brain/ (script gera-brain-zip)
+public/brain.zip

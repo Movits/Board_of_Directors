@@ -65,6 +65,43 @@ export function About() {
       </section>
 
       <section className="cartao-config">
+        <h2>🧠 Second brain (vault do Obsidian)</h2>
+        <p>
+          O projeto tem um <strong>cérebro em notas conectadas</strong>: quem é cada conselheiro,
+          como funcionam o debate e o consenso pleno, as decisões tomadas e o backlog — pronto para
+          abrir no <a href="https://obsidian.md" target="_blank" rel="noreferrer">Obsidian</a> e
+          explorar pelo grafo.
+        </p>
+        <ol>
+          <li>
+            <a href={`${import.meta.env.BASE_URL}brain.zip`} download>
+              <strong>⬇︎ Baixar o vault (brain.zip)</strong>
+            </a>{' '}
+            e extrair o arquivo — vira uma pasta <code>brain</code>.
+          </li>
+          <li>
+            No Obsidian: <em>Open folder as vault</em> → selecione a pasta <code>brain</code>.
+          </li>
+          <li>
+            Depois de cada reunião, use <strong>🧠 Exportar ata (Obsidian)</strong> (no veredito ou
+            no Histórico) e solte o <code>.md</code> baixado em <code>brain/reuniões/</code> — a
+            ata se conecta sozinha às notas dos conselheiros.
+          </li>
+        </ol>
+        <p className="campo-dica">
+          A mesma pasta vive no{' '}
+          <a
+            href="https://github.com/Movits/Board_of_Directors/tree/claude/board-of-directors-agents-roymtr/brain"
+            target="_blank"
+            rel="noreferrer"
+          >
+            repositório (pasta brain/)
+          </a>{' '}
+          — quem usa git pode cloná-la e recebê-la sempre atualizada.
+        </p>
+      </section>
+
+      <section className="cartao-config">
         <h2>📜 Licença</h2>
         <p>
           Código aberto sob a <strong>licença MIT</strong> — sem garantias de qualquer tipo.{' '}

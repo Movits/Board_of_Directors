@@ -4,6 +4,14 @@ Esta pasta é um **vault do Obsidian**: o cérebro do projeto, com as notas
 conectadas por [[wikilinks]] — conselheiros, conceitos, arquitetura, decisões e
 as atas das reuniões.
 
+## Como ter esta pasta no seu computador
+
+- **Pelo app**: rodapé → *sobre & privacidade* → **⬇︎ Baixar o vault (brain.zip)**
+  → extraia o zip (vira uma pasta `brain`);
+- **Pelo GitHub**: botão **Code → Download ZIP** do repositório (a pasta
+  `brain/` vem dentro);
+- **Com git**: clone o repositório — aí o vault atualiza junto com `git pull`.
+
 ## Como abrir
 
 1. Instale o [Obsidian](https://obsidian.md).

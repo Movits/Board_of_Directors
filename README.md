@@ -42,7 +42,13 @@ Votos possíveis: ✅ Aprovar · ⚠️ Aprovar com ressalvas · ❌ Rejeitar.
 
 ## Second brain (`brain/`) — o cérebro do projeto no Obsidian
 
-A pasta [`brain/`](brain) é um **vault do Obsidian**: notas interconectadas sobre os conselheiros, os conceitos (reunião, debate, consenso pleno…), a arquitetura e as decisões do projeto. Abra com *Open folder as vault* e explore pelo grafo.
+A pasta [`brain/`](brain) é um **vault do Obsidian**: notas interconectadas sobre os conselheiros, os conceitos (reunião, debate, consenso pleno…), a arquitetura e as decisões do projeto.
+
+Para ter o vault no seu computador (escolha um caminho):
+
+1. **Pelo app** (mais fácil): rodapé → *sobre & privacidade* → **⬇︎ Baixar o vault (brain.zip)** → extraia e abra a pasta `brain` no Obsidian com *Open folder as vault*;
+2. **Pelo GitHub**: botão verde **Code → Download ZIP** (a pasta `brain/` vem dentro do zip do repositório);
+3. **Com git**: `git clone` do repositório — o vault fica sempre atualizado com `git pull`.
 
 Toda reunião concluída tem o botão **🧠 Exportar ata (Obsidian)** (no veredito e no Histórico): baixa a ata como `.md` com frontmatter e `[[wikilinks]]` para os conselheiros — solte o arquivo em `brain/reuniões/` e a reunião entra no grafo do seu second brain.
 
