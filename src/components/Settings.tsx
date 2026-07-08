@@ -101,6 +101,15 @@ export function Settings() {
 
       <section className="cartao-config">
         <h2>🔑 Conexão — {info.rotulo}</h2>
+        {provedor === 'anthropic' && (
+          <div className="aviso aviso-atencao">
+            <strong>Assinatura ≠ API.</strong> A API da Anthropic usa <em>créditos próprios</em>,
+            comprados em console.anthropic.com — ela é <strong>separada</strong> da assinatura do
+            claude.ai (Pro/Max) e <strong>não consome o limite do seu plano</strong>. Hoje não
+            existe forma de usar o plano aqui. Dica: compre um valor pequeno (ex.: US$5), defina um
+            limite de gasto e use Sonnet ou Haiku — rende dezenas de reuniões.
+          </div>
+        )}
         {info.urlChave ? (
           <p>
             Crie uma chave em{' '}

@@ -1,16 +1,28 @@
-import { useState } from 'react'
-import type { ConfigReuniao } from '../types'
+import { useRef, useState } from 'react'
+import type { Anexo, ConfigReuniao, RepoConectado } from '../types'
 import { MEMBROS_VOTANTES } from '../board/members'
 import { infoProvedor } from '../api'
 import {
+  gravaGithubToken,
+  gravaProjeto,
   gravaRascunho,
   leBaseUrlDe,
   leChave,
+  leGithubToken,
   leModeloDe,
   leModelosDescobertos,
   leProvedor,
   leRascunho,
+  nomeDeProjeto,
 } from '../lib/storage'
+import {
+  MAX_ANEXOS,
+  MAX_TOTAL_BYTES,
+  formataTamanho,
+  processaArquivo,
+  tamanhoTotal,
+} from '../lib/anexos'
+import { lerRepositorio, parseRepo } from '../lib/github'
 
 interface Props {
   aoConvocar: (config: ConfigReuniao) => void
@@ -49,9 +61,64 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
   const [gerarPrompt, setGerarPrompt] = useState(true)
   const [demo, setDemo] = useState(!configurado)
 
+  // Materiais de apoio: anexos e repositório do GitHub
+  const arquivoRef = useRef<HTMLInputElement>(null)
+  const [anexos, setAnexos] = useState<Anexo[]>([])
+  const [erroAnexo, setErroAnexo] = useState('')
+  const [repoEntrada, setRepoEntrada] = useState('')
+  const [repo, setRepo] = useState<RepoConectado | null>(null)
+  const [lendoRepo, setLendoRepo] = useState(false)
+  const [erroRepo, setErroRepo] = useState('')
+  const [mostraToken, setMostraToken] = useState(false)
+  const [githubToken, setGithubToken] = useState(() => leGithubToken())
+
   const escreveIdeia = (texto: string) => {
     setIdeia(texto)
     gravaRascunho(texto)
+  }
+
+  const adicionaArquivos = async (lista: FileList | null) => {
+    if (!lista) return
+    setErroAnexo('')
+    const novos = [...anexos]
+    for (const arquivo of Array.from(lista)) {
+      if (novos.length >= MAX_ANEXOS) {
+        setErroAnexo(`Máximo de ${MAX_ANEXOS} anexos por projeto.`)
+        break
+      }
+      try {
+        const anexo = await processaArquivo(arquivo)
+        if (tamanhoTotal(novos) + anexo.tamanho > MAX_TOTAL_BYTES) {
+          setErroAnexo(
+            `Limite total de ${formataTamanho(MAX_TOTAL_BYTES)} em anexos atingido — "${arquivo.name}" ficou de fora.`,
+          )
+          break
+        }
+        novos.push(anexo)
+      } catch (err) {
+        setErroAnexo(err instanceof Error ? err.message : String(err))
+      }
+    }
+    setAnexos(novos)
+    if (arquivoRef.current) arquivoRef.current.value = ''
+  }
+
+  const conectaRepo = async () => {
+    const alvo = parseRepo(repoEntrada)
+    if (!alvo) {
+      setErroRepo('Endereço inválido. Use https://github.com/dono/repositorio ou dono/repositorio.')
+      return
+    }
+    setLendoRepo(true)
+    setErroRepo('')
+    try {
+      gravaGithubToken(githubToken.trim())
+      setRepo(await lerRepositorio(alvo.owner, alvo.repo, githubToken.trim() || undefined))
+    } catch (err) {
+      setErroRepo(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLendoRepo(false)
+    }
   }
 
   const alterna = (id: string) => {
@@ -68,25 +135,50 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
   const faltaMembros = selecionados.size < 2
   // No modo demonstração nenhuma API é chamada — o modelo não bloqueia o botão.
   const faltaModelo = !demo && modeloFinal.length === 0
-  const pronto = !faltaIdeia && !faltaMembros && !faltaModelo
+  const pdfSemSuporte = !demo && provedor !== 'anthropic' && anexos.some((a) => a.tipo === 'pdf')
+  const pronto = !faltaIdeia && !faltaMembros && !faltaModelo && !pdfSemSuporte
   const motivoBloqueio = faltaIdeia
     ? 'Para começar, escreva sua ideia acima (mínimo de 10 caracteres).'
     : faltaMembros
       ? 'Selecione ao menos 2 conselheiros.'
       : faltaModelo
         ? 'Digite o ID do modelo personalizado — ou escolha um da lista.'
-        : null
+        : pdfSemSuporte
+          ? 'PDF anexado: só o provedor Claude (Anthropic) lê PDFs. Troque o provedor, remova o PDF ou envie as páginas como imagens.'
+          : null
 
   // Estimativa de chamadas: N análises + N por rodada de debate + síntese + entregáveis
   const entregaveis = (gerarPlano ? 1 : 0) + (gerarPrompt ? 1 : 0)
   const chamadas = (rodadas: number) => selecionados.size * (1 + rodadas) + 1 + entregaveis
+  const notaAnexos =
+    !demo && anexos.some((a) => a.tipo !== 'texto')
+      ? ' Imagens/PDF anexados encarecem cada análise.'
+      : ''
   const estimativa = demo
     ? 'Modo demonstração: nenhuma chamada de IA será feita — tudo é simulado, sem custo.'
     : modoDebate === 'consenso'
-      ? `Esta configuração fará entre ${chamadas(0)} e ${chamadas(5)} chamadas de IA — o consenso pode vir logo ou levar até 5 rodadas.`
-      : `Esta configuração fará ~${chamadas(Number(modoDebate))} chamadas de IA.`
+      ? `Esta configuração fará entre ${chamadas(0)} e ${chamadas(5)} chamadas de IA — o consenso pode vir logo ou levar até 5 rodadas.${notaAnexos}`
+      : `Esta configuração fará ~${chamadas(Number(modoDebate))} chamadas de IA.${notaAnexos}`
 
   const convocar = () => {
+    const agora = new Date().toISOString()
+    const projetoId = `projeto-${Date.now()}`
+    const gravado = gravaProjeto({
+      id: projetoId,
+      nome: nomeDeProjeto(ideia),
+      criadoEm: agora,
+      atualizadoEm: agora,
+      ideia: ideia.trim(),
+      anexos,
+      repo: repo ?? undefined,
+      reunioesIds: [],
+    })
+    if (!gravado) {
+      setErroAnexo(
+        'O armazenamento do navegador está cheio — remova anexos ou exclua projetos antigos e tente de novo.',
+      )
+      return
+    }
     gravaRascunho('')
     aoConvocar({
       ideia: ideia.trim(),
@@ -98,6 +190,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
       gerarPrompt,
       gerarPlano,
       demo,
+      projetoId,
     })
   }
 
@@ -126,6 +219,102 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
           navegador até você convocar o conselho.
         </span>
       </label>
+
+      <fieldset className="campo campo-materiais">
+        <legend className="campo-rotulo">Materiais de apoio (opcional)</legend>
+
+        <div className="linha-anexos">
+          <input
+            ref={arquivoRef}
+            type="file"
+            multiple
+            accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.txt,.md,.csv,.json"
+            style={{ display: 'none' }}
+            onChange={(e) => adicionaArquivos(e.target.files)}
+          />
+          <button type="button" className="botao-secundario" onClick={() => arquivoRef.current?.click()}>
+            📎 Anexar arquivos
+          </button>
+          <span className="campo-dica">
+            Identidade visual, mockups, pesquisa… Imagens, PDF ou texto — os conselheiros analisam
+            tudo junto com a ideia.
+          </span>
+        </div>
+        {anexos.length > 0 && (
+          <ul className="lista-anexos">
+            {anexos.map((a) => (
+              <li key={a.id} className="chip-anexo">
+                <span>
+                  {a.tipo === 'imagem' ? '🖼' : a.tipo === 'pdf' ? '📄' : '📝'} {a.nome}{' '}
+                  <small>({formataTamanho(a.tamanho)})</small>
+                </span>
+                <button
+                  type="button"
+                  title="Remover anexo"
+                  onClick={() => setAnexos(anexos.filter((x) => x.id !== a.id))}
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {erroAnexo && <div className="aviso aviso-erro">{erroAnexo}</div>}
+
+        <div className="linha-repo">
+          {repo ? (
+            <div className="repo-conectado">
+              <span>
+                ✅ Repositório conectado: <strong>{repo.owner}/{repo.repo}</strong>{' '}
+                <small>(branch {repo.branch} · lido em {new Date(repo.atualizadoEm).toLocaleDateString('pt-BR')})</small>
+              </span>
+              <button type="button" title="Desconectar repositório" onClick={() => setRepo(null)}>
+                ✕
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="linha-chave">
+                <input
+                  type="text"
+                  value={repoEntrada}
+                  onChange={(e) => setRepoEntrada(e.target.value)}
+                  placeholder="https://github.com/dono/repositorio — se o projeto já tem código"
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  className="botao-principal botao-compacto"
+                  onClick={conectaRepo}
+                  disabled={lendoRepo || repoEntrada.trim().length === 0}
+                >
+                  {lendoRepo ? 'Lendo…' : '🔗 Conectar repo'}
+                </button>
+              </div>
+              <span className="campo-dica">
+                Os conselheiros leem um resumo do código (árvore de arquivos, README,
+                dependências) e levam o estado real do projeto em conta.{' '}
+                <button type="button" className="link link-sutil" onClick={() => setMostraToken((v) => !v)}>
+                  {mostraToken ? 'ocultar token' : 'repositório privado?'}
+                </button>
+              </span>
+              {mostraToken && (
+                <div className="linha-chave">
+                  <input
+                    type="password"
+                    value={githubToken}
+                    onChange={(e) => setGithubToken(e.target.value)}
+                    placeholder="token de acesso do GitHub (fine-grained, só leitura de conteúdo)"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+              )}
+              {erroRepo && <div className="aviso aviso-erro">{erroRepo}</div>}
+            </>
+          )}
+        </div>
+      </fieldset>
 
       <fieldset className="campo">
         <legend className="campo-rotulo">Conselheiros convocados ({selecionados.size})</legend>

@@ -511,6 +511,127 @@ input:focus {
   font-size: inherit;
 }
 
+/* ── Materiais de apoio (anexos + repositório) ─────────────────────────── */
+
+.campo-materiais {
+  border: 1px dashed var(--borda);
+  border-radius: var(--raio);
+  padding: 14px 16px;
+  gap: 12px;
+}
+
+.botao-secundario {
+  align-self: flex-start;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 8px 14px;
+  background: var(--fundo-2);
+  font-size: 0.9rem;
+}
+
+.botao-secundario:hover:not(:disabled) {
+  border-color: var(--ouro);
+}
+
+.linha-anexos {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.lista-anexos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-anexo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  padding: 6px 8px 6px 14px;
+  background: var(--fundo-2);
+  font-size: 0.85rem;
+}
+
+.chip-anexo small {
+  color: var(--texto-suave);
+}
+
+.chip-anexo button {
+  color: var(--texto-suave);
+  padding: 0 6px;
+}
+
+.chip-anexo button:hover {
+  color: var(--vermelho);
+}
+
+.linha-repo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.repo-conectado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  border: 1px solid rgba(76, 175, 125, 0.4);
+  background: rgba(76, 175, 125, 0.08);
+  border-radius: var(--raio);
+  padding: 10px 14px;
+}
+
+.repo-conectado small {
+  color: var(--texto-suave);
+}
+
+/* ── Página do projeto ─────────────────────────────────────────────────── */
+
+.tela-projeto {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 900px;
+}
+
+.projeto-meta {
+  color: var(--texto-suave);
+  margin: -8px 0 0;
+  font-size: 0.9rem;
+}
+
+.projeto-ideia {
+  margin: 0;
+  border-left: 3px solid var(--ouro);
+  padding: 4px 16px;
+  color: var(--texto);
+  font-style: italic;
+}
+
+.cartao-acompanhamento {
+  border-color: rgba(201, 162, 39, 0.5);
+}
+
+.sala-acoes-finais {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sala-projeto-nome {
+  color: var(--texto-suave);
+}
+
 .campo-base-url {
   margin-top: 14px;
 }

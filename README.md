@@ -27,6 +27,14 @@ Apresente uma ideia e um conselho de **13 conselheiros de IA** — cada um com e
 
 Todas as personas são **editáveis** em *Configurações → Personas dos conselheiros*.
 
+## Projetos — sua mini empresa
+
+Cada ideia apresentada vira um **projeto**, e o conselho trabalha nele **reunião após reunião**:
+
+- **Pitch rico** — além do texto, anexe **imagens, PDFs e arquivos de texto** (identidade visual, mockups, pesquisa) e **conecte um repositório do GitHub**: os conselheiros leem um digest do código (árvore de arquivos, README, dependências) e analisam o estado REAL do projeto.
+- **Reuniões de acompanhamento** — na aba **Projetos**, abra um projeto e convoque a equipe de novo com uma **pauta** ("o que mudou, o que quero de vocês agora"). Os conselheiros recebem a ideia, os materiais, o repositório e o resumo da reunião anterior — e focam em **aperfeiçoar** o projeto, não só aprovar/rejeitar.
+- Anexos: até 5 arquivos (~3 MB no total, imagens são comprimidas automaticamente). PDFs são lidos nativamente pelo provedor Claude; nos demais provedores, envie imagens ou texto.
+
 ## Como funciona a reunião
 
 1. **Análises independentes** — cada conselheiro estuda a ideia pela ótica da sua especialidade: análise, estratégias, riscos, perguntas críticas e voto preliminar.
@@ -85,6 +93,10 @@ Sem chave, a app roda em **modo demonstração** (respostas simuladas, sem custo
 A tela inicial mostra, antes de convocar, **quantas chamadas de IA** a configuração escolhida fará.
 
 O modo "até consenso" pode multiplicar o custo (até 5 rodadas de debate). O prompt de execução adiciona ~1 chamada longa ao final.
+
+### Assinatura do claude.ai ≠ créditos de API
+
+A API da Anthropic (console.anthropic.com) usa **créditos próprios, pagos por consumo** — ela é separada da assinatura do claude.ai (Pro/Max) e **não consome o limite do seu plano**; hoje não há forma de um app de terceiros gastar a franquia da assinatura. O caminho barato: compre um valor pequeno de créditos (ex.: US$5), defina limite de gasto e use **Sonnet ou Haiku**. Já o **prompt de execução** que o conselho entrega você cola no Claude Code ou no claude.ai — e aí sim usa o seu plano.
 
 ### Segurança da chave
 

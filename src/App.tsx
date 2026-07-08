@@ -3,14 +3,16 @@ import type { ConfigReuniao, Reuniao } from './types'
 import { IdeaForm } from './components/IdeaForm'
 import { MeetingRoom } from './components/MeetingRoom'
 import { Settings } from './components/Settings'
-import { History } from './components/History'
+import { Projects } from './components/Projects'
+import { ProjectPage } from './components/ProjectPage'
 import { About } from './components/About'
 
 type Tela =
   | { tipo: 'inicio' }
   | { tipo: 'reuniao'; config: ConfigReuniao; existente?: Reuniao }
   | { tipo: 'configuracoes' }
-  | { tipo: 'historico' }
+  | { tipo: 'projetos' }
+  | { tipo: 'projeto'; id: string }
   | { tipo: 'sobre' }
 
 export function App() {
@@ -34,10 +36,10 @@ export function App() {
             Nova reunião
           </button>
           <button
-            className={tela.tipo === 'historico' ? 'ativo' : ''}
-            onClick={() => setTela({ tipo: 'historico' })}
+            className={tela.tipo === 'projetos' || tela.tipo === 'projeto' ? 'ativo' : ''}
+            onClick={() => setTela({ tipo: 'projetos' })}
           >
-            Histórico
+            Projetos
           </button>
           <button
             className={tela.tipo === 'configuracoes' ? 'ativo' : ''}
@@ -60,11 +62,23 @@ export function App() {
             config={tela.config}
             existente={tela.existente}
             aoNovaReuniao={() => setTela({ tipo: 'inicio' })}
+            aoVerProjeto={(id) => setTela({ tipo: 'projeto', id })}
           />
         )}
         {tela.tipo === 'configuracoes' && <Settings />}
-        {tela.tipo === 'historico' && (
-          <History aoAbrir={(reuniao) => setTela({ tipo: 'reuniao', config: reuniao.config, existente: reuniao })} />
+        {tela.tipo === 'projetos' && (
+          <Projects
+            aoAbrirProjeto={(id) => setTela({ tipo: 'projeto', id })}
+            aoNovoProjeto={() => setTela({ tipo: 'inicio' })}
+          />
+        )}
+        {tela.tipo === 'projeto' && (
+          <ProjectPage
+            projetoId={tela.id}
+            aoAbrirReuniao={(config, existente) => setTela({ tipo: 'reuniao', config, existente })}
+            aoConvocar={(config) => setTela({ tipo: 'reuniao', config })}
+            aoVoltar={() => setTela({ tipo: 'projetos' })}
+          />
         )}
         {tela.tipo === 'sobre' && <About />}
       </main>

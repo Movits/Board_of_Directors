@@ -34,6 +34,16 @@ produto.
   pacote jurídico (Sobre & privacidade + LICENSE MIT), texto a limpo.
 - Home em dois estados: sem API, só o botão "Conectar uma API de IA".
 
+## Rodada 7 — pitch rico e projetos contínuos (2026-07-08)
+- **[[Projetos]]**: o Histórico virou Projetos — cada ideia vira um projeto com
+  reuniões de acompanhamento (pauta + resumo da reunião anterior no contexto);
+  a persona base dos conselheiros passou a mirar em APERFEIÇOAR o projeto.
+- **Pitch rico**: anexos no pitch (imagens comprimidas no navegador, PDF nativo
+  no provedor Claude, textos inline) e repositório do GitHub conectado (digest
+  com árvore, README e dependências lido direto do navegador).
+- Nota "assinatura ≠ API" nas Configurações e no README (créditos da API são
+  separados do plano Pro/Max do claude.ai).
+
 ## Rodada 6 — consenso pleno e second brain (2026-07-08)
 - **[[Consenso Pleno]]**: ressalvas nunca encerram o modo consenso; consenso =
   todos Aprovar OU todos Rejeitar; `ressalvas_pendentes` declaradas e debatidas;

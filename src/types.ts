@@ -2,6 +2,56 @@ export type Voto = 'aprovar' | 'aprovar_com_ressalvas' | 'rejeitar'
 
 export type Provedor = 'anthropic' | 'openai' | 'custom'
 
+// ── Projetos: a "mini empresa" — reuniões contínuas sobre o mesmo projeto ────
+
+export type TipoAnexo = 'imagem' | 'pdf' | 'texto'
+
+/** Arquivo anexado ao pitch (identidade visual, mockups, documentos…). */
+export interface Anexo {
+  id: string
+  nome: string
+  tipo: TipoAnexo
+  mime: string
+  /** Imagem/PDF: base64 (sem prefixo data:). Texto: o conteúdo em texto puro. */
+  dados: string
+  /** Tamanho aproximado em bytes após o processamento. */
+  tamanho: number
+}
+
+/** Repositório do GitHub conectado ao projeto — os agentes leem um digest dele. */
+export interface RepoConectado {
+  url: string
+  owner: string
+  repo: string
+  branch: string
+  /** Digest textual: descrição, árvore de arquivos, README e arquivos-chave. */
+  resumo: string
+  atualizadoEm: string
+}
+
+/** Um projeto agrupa a ideia, os anexos, o repositório e TODAS as reuniões
+ *  do conselho sobre ele — dá para voltar e continuar trabalhando com a equipe. */
+export interface Projeto {
+  id: string
+  nome: string
+  criadoEm: string
+  atualizadoEm: string
+  /** A ideia/visão base apresentada no primeiro pitch. */
+  ideia: string
+  anexos: Anexo[]
+  repo?: RepoConectado
+  /** Ids das reuniões (no histórico), da mais antiga para a mais recente. */
+  reunioesIds: string[]
+}
+
+/** Contexto extra do projeto injetado nos prompts (não persiste na reunião). */
+export interface ContextoProjeto {
+  /** Digest do repositório conectado. */
+  repo?: string
+  /** Resumo (veredito) da reunião anterior — para reuniões de acompanhamento. */
+  reuniaoAnterior?: string
+}
+
 export interface Membro {
   id: string
   nome: string
@@ -120,6 +170,10 @@ export interface ConfigReuniao {
   /** Gerar o plano detalhado (documento visual/PDF) ao final. */
   gerarPlano: boolean
   demo: boolean
+  /** Projeto ao qual esta reunião pertence. */
+  projetoId?: string
+  /** Reunião de ACOMPANHAMENTO: o que mudou e o que o dono quer da equipe agora. */
+  pauta?: string
 }
 
 export interface Reuniao {
@@ -164,6 +218,8 @@ export interface Transporte {
     schema: Record<string, unknown>
     membroId: string
     signal?: AbortSignal
+    /** Anexos multimodais (imagens/PDF) enviados junto com a mensagem. */
+    anexos?: Anexo[]
   }): Promise<string>
   /** Chamada streamada em texto/markdown (síntese e prompt de execução). */
   streamada(params: {
@@ -172,5 +228,6 @@ export interface Transporte {
     proposito: 'sintese' | 'prompt'
     onDelta: (texto: string) => void
     signal?: AbortSignal
+    anexos?: Anexo[]
   }): Promise<string>
 }

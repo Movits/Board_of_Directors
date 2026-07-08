@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import type { Transporte } from '../types'
+import type { Anexo, Transporte } from '../types'
 
 export const MODELOS_OPENAI = [
   { id: 'gpt-5.5', rotulo: 'GPT-5.5', detalhe: 'modelo mais capaz da OpenAI' },
@@ -29,6 +29,23 @@ function traduzErro(err: unknown): Error {
     return new Error(`Erro da API (${err.status ?? '?'}): ${err.message}`)
   }
   return err instanceof Error ? err : new Error(String(err))
+}
+
+/** Conteúdo multimodal: imagens como data URL (PDFs são bloqueados na UI —
+ *  o chat/completions não os aceita; só o provedor Claude lê PDF nativamente). */
+function montaConteudo(
+  user: string,
+  anexos?: Anexo[],
+): string | OpenAI.Chat.Completions.ChatCompletionContentPart[] {
+  const imagens = (anexos ?? []).filter((a) => a.tipo === 'imagem')
+  if (imagens.length === 0) return user
+  return [
+    ...imagens.map((a) => ({
+      type: 'image_url' as const,
+      image_url: { url: `data:${a.mime};base64,${a.dados}` },
+    })),
+    { type: 'text' as const, text: user },
+  ]
 }
 
 /** Isola o objeto JSON de respostas que vierem com cercas de markdown ou texto extra. */
@@ -70,6 +87,7 @@ export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }
     schema: Record<string, unknown>,
     signal: AbortSignal | undefined,
     comSchema: boolean,
+    anexos?: Anexo[],
   ) => {
     const pedidoJson = comSchema
       ? {
@@ -88,7 +106,7 @@ export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }
         ...limite(12000),
         messages: [
           { role: 'system', content: system },
-          { role: 'user', content: user + sufixo },
+          { role: 'user', content: montaConteudo(user + sufixo, anexos) },
         ],
         ...pedidoJson,
       },
@@ -104,11 +122,11 @@ export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }
   }
 
   return {
-    async estruturada({ system, user, schema, signal }) {
+    async estruturada({ system, user, schema, signal, anexos }) {
       try {
         if (!usaFallbackJson) {
           try {
-            return await chamadaEstruturada(system, user, schema, signal, true)
+            return await chamadaEstruturada(system, user, schema, signal, true, anexos)
           } catch (err) {
             // API sem suporte a response_format json_schema → tenta via instrução
             if (compat && err instanceof OpenAI.BadRequestError) {
@@ -118,13 +136,13 @@ export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }
             }
           }
         }
-        return await chamadaEstruturada(system, user, schema, signal, false)
+        return await chamadaEstruturada(system, user, schema, signal, false, anexos)
       } catch (err) {
         throw traduzErro(err)
       }
     },
 
-    async streamada({ system, user, onDelta, signal }) {
+    async streamada({ system, user, onDelta, signal, anexos }) {
       try {
         const stream = await client.chat.completions.create(
           {
@@ -133,7 +151,7 @@ export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }
             stream: true,
             messages: [
               { role: 'system', content: system },
-              { role: 'user', content: user },
+              { role: 'user', content: montaConteudo(user, anexos) },
             ],
           },
           { signal },

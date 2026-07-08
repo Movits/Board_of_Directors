@@ -1,7 +1,9 @@
 import type {
   AnaliseDebate,
   AnaliseRodada1,
+  Anexo,
   ConfigReuniao,
+  ContextoProjeto,
   EstadoMembro,
   EventosReuniao,
   Membro,
@@ -14,6 +16,8 @@ import type { Plano } from '../types'
 import { MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from './members'
 import { SCHEMA_DEBATE, SCHEMA_PLANO, SCHEMA_RODADA1 } from './schemas'
 import { promptDebate, promptExecucao, promptPlano, promptRodada1, promptSintese } from './prompts'
+import type { ExtrasRodada1 } from './prompts'
+import { anexosTextuais, descreveAnexos } from '../lib/anexos'
 
 const CONCORRENCIA = 4
 /** Teto de rodadas no modo "até consenso" — evita reuniões (e custos) infinitos. */
@@ -69,6 +73,10 @@ export interface OpcoesReuniao {
   personas: Record<string, string>
   eventos: EventosReuniao
   abortar?: AbortSignal
+  /** Anexos do projeto (imagens/PDF vão nas chamadas; textos entram no prompt). */
+  anexos?: Anexo[]
+  /** Contexto do projeto: digest do repositório e resumo da reunião anterior. */
+  contexto?: ContextoProjeto
 }
 
 /** Contexto mínimo para gerar (ou regerar) um entregável após a síntese. */
@@ -79,6 +87,7 @@ export interface ContextoEntregavel {
   participantes: { membro: Membro; estado: EstadoMembro }[]
   veredito: string
   abortar?: AbortSignal
+  anexos?: Anexo[]
 }
 
 export async function gerarPlano(ctx: ContextoEntregavel): Promise<Plano> {
@@ -88,6 +97,7 @@ export async function gerarPlano(ctx: ContextoEntregavel): Promise<Plano> {
     schema: SCHEMA_PLANO as unknown as Record<string, unknown>,
     membroId: PRESIDENTE.id,
     signal: ctx.abortar,
+    anexos: ctx.anexos,
   })
   return parseJson<Plano>(texto, 'plano')
 }
@@ -102,11 +112,12 @@ export async function gerarPromptExecucao(
     proposito: 'prompt',
     onDelta,
     signal: ctx.abortar,
+    anexos: ctx.anexos,
   })
 }
 
 export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | null> {
-  const { config, transporte, personas, eventos, abortar } = opcoes
+  const { config, transporte, personas, eventos, abortar, anexos = [], contexto } = opcoes
   const participantes: Membro[] = MEMBROS_VOTANTES.filter((m) => config.membrosIds.includes(m.id))
   const membros: Record<string, EstadoMembro> = {}
   for (const m of participantes) {
@@ -115,6 +126,15 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
 
   const cancelado = () => abortar?.aborted === true
   const persona = (m: Membro) => personas[m.id] ?? m.systemPrompt
+
+  // Materiais do projeto que acompanham o pitch na rodada de análises
+  const extras: ExtrasRodada1 = {
+    repo: contexto?.repo,
+    reuniaoAnterior: contexto?.reuniaoAnterior,
+    pauta: config.pauta,
+    anexosTexto: anexosTextuais(anexos) || undefined,
+    listaAnexos: descreveAnexos(anexos) || undefined,
+  }
 
   try {
     // ── Rodada 1: análises independentes em paralelo ─────────────────────────
@@ -126,10 +146,11 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
         try {
           const texto = await transporte.estruturada({
             system: persona(m),
-            user: promptRodada1(config.ideia),
+            user: promptRodada1(config.ideia, extras),
             schema: SCHEMA_RODADA1 as unknown as Record<string, unknown>,
             membroId: m.id,
             signal: abortar,
+            anexos,
           })
           const resultado = parseJson<AnaliseRodada1>(texto, m.nome)
           membros[m.id].rodada1 = resultado
@@ -257,13 +278,14 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
     eventos.onStatusMembro(PRESIDENTE.id, 'pronto')
 
     // ── Entregáveis (opcionais e NÃO-fatais: falha aqui não perde a reunião) ─
-    const contexto: ContextoEntregavel = {
+    const ctxEntregavel: ContextoEntregavel = {
       config,
       transporte,
       personas,
       participantes: ativos.map((m) => ({ membro: m, estado: membros[m.id] })),
       veredito,
       abortar,
+      anexos,
     }
 
     // Plano detalhado (documento visual/PDF — estruturado)
@@ -272,7 +294,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
       eventos.onFase('plano')
       eventos.onStatusMembro(PRESIDENTE.id, 'analisando')
       try {
-        plano = await gerarPlano(contexto)
+        plano = await gerarPlano(ctxEntregavel)
         if (cancelado()) return null
         eventos.onPlano(plano)
       } catch (err) {
@@ -288,7 +310,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
       eventos.onFase('prompt')
       eventos.onStatusMembro(PRESIDENTE.id, 'analisando')
       try {
-        promptExec = await gerarPromptExecucao(contexto, (t) => {
+        promptExec = await gerarPromptExecucao(ctxEntregavel, (t) => {
           if (!cancelado()) eventos.onPromptDelta(t)
         })
         if (cancelado()) return null

@@ -35,13 +35,67 @@ export function personaEfetiva(base: string, feedback: ItemFeedback[]): string {
   return linhas.join('\n')
 }
 
-export function promptRodada1(ideia: string): string {
-  return `O empreendedor apresentou a seguinte ideia ao conselho:
+/** Materiais extras que acompanham o pitch (todos opcionais). */
+export interface ExtrasRodada1 {
+  /** Digest do repositório do GitHub conectado ao projeto. */
+  repo?: string
+  /** Conteúdo de anexos textuais (.md/.txt/.csv) enviados pelo empreendedor. */
+  anexosTexto?: string
+  /** Lista curta dos anexos enviados (nomes e tipos). */
+  listaAnexos?: string
+  /** Reunião de ACOMPANHAMENTO: resumo da reunião anterior do conselho. */
+  reuniaoAnterior?: string
+  /** Reunião de ACOMPANHAMENTO: o que o empreendedor quer da equipe agora. */
+  pauta?: string
+}
+
+export function promptRodada1(ideia: string, extras: ExtrasRodada1 = {}): string {
+  const blocos: string[] = []
+  if (extras.listaAnexos) {
+    blocos.push(
+      `O empreendedor anexou os seguintes materiais (analise-os também — imagens e PDFs seguem junto desta mensagem): ${extras.listaAnexos}`,
+    )
+  }
+  if (extras.anexosTexto) {
+    blocos.push(`Conteúdo dos anexos de texto:\n\n${extras.anexosTexto}`)
+  }
+  if (extras.repo) {
+    blocos.push(
+      `O projeto tem um repositório no GitHub conectado. Leia o digest abaixo e leve o estado REAL do código em conta na sua análise:\n\n<repositorio>\n${extras.repo}\n</repositorio>`,
+    )
+  }
+
+  if (extras.pauta) {
+    if (extras.reuniaoAnterior) {
+      blocos.push(
+        `Resumo da última reunião do conselho sobre este projeto:\n\n<reuniao_anterior>\n${extras.reuniaoAnterior}\n</reuniao_anterior>`,
+      )
+    }
+    return `Reunião de ACOMPANHAMENTO de um projeto em andamento. O conselho já conhece este projeto — a missão de hoje não é aprovar ou rejeitar uma ideia nova, e sim APERFEIÇOAR o projeto e orientar o próximo passo.
+
+O projeto:
 
 <ideia>
 ${ideia}
 </ideia>
 
+${blocos.join('\n\n')}
+
+O empreendedor traz a seguinte pauta para o conselho:
+
+<pauta>
+${extras.pauta}
+</pauta>
+
+Faça seu trabalho como conselheiro: avalie o progresso e a pauta pela ótica da sua especialidade, proponha os próximos passos concretos, aponte riscos novos ou persistentes e levante as perguntas críticas. Seu voto expressa sua avaliação da DIREÇÃO ATUAL do projeto (aprovar = seguir como está indo; ressalvas = seguir com correções; rejeitar = mudar de rumo).`
+  }
+
+  return `O empreendedor apresentou a seguinte ideia ao conselho:
+
+<ideia>
+${ideia}
+</ideia>
+${blocos.length > 0 ? '\n' + blocos.join('\n\n') + '\n' : ''}
 Faça seu trabalho como conselheiro: analise a ideia a fundo pela ótica da sua especialidade, proponha estratégias concretas, aponte riscos, levante as perguntas críticas e dê seu voto preliminar.`
 }
 

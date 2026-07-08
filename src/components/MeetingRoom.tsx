@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import type { ConfigReuniao, EstadoMembro, FaseReuniao, Plano, Reuniao, Voto } from '../types'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ConfigReuniao, ContextoProjeto, EstadoMembro, FaseReuniao, Plano, Reuniao, Voto } from '../types'
 import { MEMBROS, MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from '../board/members'
 import {
   conduzirReuniao,
@@ -13,7 +13,16 @@ import {
 import { personaEfetiva } from '../board/prompts'
 import { criaTransporte } from '../api'
 import { criaTransporteDemo } from '../board/demo'
-import { leBaseUrlDe, leChave, leFeedback, lePersonas, gravaReuniao } from '../lib/storage'
+import {
+  anexaReuniaoAoProjeto,
+  gravaReuniao,
+  leBaseUrlDe,
+  leChave,
+  leFeedback,
+  leHistorico,
+  lePersonas,
+  leProjeto,
+} from '../lib/storage'
 import { MemberCard } from './MemberCard'
 import { MemberDrawer } from './MemberDrawer'
 import { VoteTally } from './VoteTally'
@@ -37,6 +46,20 @@ interface Props {
   config: ConfigReuniao
   existente?: Reuniao
   aoNovaReuniao: () => void
+  aoVerProjeto?: (projetoId: string) => void
+}
+
+/** Resumo da reunião anterior do projeto — contexto para acompanhamentos. */
+function resumoReuniaoAnterior(projetoId: string): string | undefined {
+  const projeto = leProjeto(projetoId)
+  const ultimaId = projeto?.reunioesIds[projeto.reunioesIds.length - 1]
+  if (!ultimaId) return undefined
+  const anterior = leHistorico().find((r) => r.id === ultimaId)
+  if (!anterior) return undefined
+  const placar = `Placar: ✅ ${anterior.placar.aprovar} · ⚠️ ${anterior.placar.aprovar_com_ressalvas} · ❌ ${anterior.placar.rejeitar}`
+  const veredito =
+    anterior.veredito.length > 6000 ? anterior.veredito.slice(0, 6000) + '\n… (resumo truncado)' : anterior.veredito
+  return `Data: ${new Date(anterior.data).toLocaleDateString('pt-BR')}${anterior.config.pauta ? `\nPauta daquela reunião: ${anterior.config.pauta}` : ''}\n${placar}\n\n${veredito}`
 }
 
 interface EstadoUI {
@@ -87,12 +110,27 @@ function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
   }
 }
 
-export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
+export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: Props) {
   const [estado, setEstado] = useState<EstadoUI>(() => estadoInicial(config, existente))
   const [membroAberto, setMembroAberto] = useState<string | null>(null)
   const [planoAberto, setPlanoAberto] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const iniciadaRef = useRef(false)
+
+  // Materiais do projeto (anexos, repo, reunião anterior) que alimentam a reunião
+  const projeto = useMemo(
+    () => (config.projetoId ? leProjeto(config.projetoId) : undefined),
+    [config.projetoId],
+  )
+  const anexos = useMemo(() => projeto?.anexos ?? [], [projeto])
+  const contexto = useMemo<ContextoProjeto>(
+    () => ({
+      repo: projeto?.repo?.resumo,
+      reuniaoAnterior:
+        config.pauta && config.projetoId ? resumoReuniaoAnterior(config.projetoId) : undefined,
+    }),
+    [projeto, config.pauta, config.projetoId],
+  )
 
   useEffect(() => {
     if (existente || iniciadaRef.current) return
@@ -113,6 +151,8 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
       transporte,
       personas: montaPersonas(),
       abortar: abort.signal,
+      anexos,
+      contexto,
       eventos: {
         onFase: (fase, rodada) =>
           setEstado((e) => ({ ...e, fase, rodadaDebate: rodada ?? e.rodadaDebate })),
@@ -169,6 +209,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
           ),
         onConcluida: (reuniao) => {
           gravaReuniao(reuniao)
+          if (config.projetoId) anexaReuniaoAoProjeto(config.projetoId, reuniao.id)
           setEstado((e) => ({ ...e, reuniao }))
         },
         onErro: (mensagem) => setEstado((e) => ({ ...e, erro: mensagem })),
@@ -193,7 +234,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
           modelo: config.modelo,
           baseUrl: config.provedor === 'anthropic' ? undefined : leBaseUrlDe(config.provedor),
         })
-    const contexto: ContextoEntregavel = {
+    const ctxRegerar: ContextoEntregavel = {
       config,
       transporte,
       personas: montaPersonas(),
@@ -202,6 +243,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
         estado: estado.membros[m.id],
       })),
       veredito: estado.veredito,
+      anexos,
     }
     setEstado((e) =>
       tipo === 'plano'
@@ -210,12 +252,12 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
     )
     try {
       if (tipo === 'plano') {
-        const plano = await gerarPlano(contexto)
+        const plano = await gerarPlano(ctxRegerar)
         const reuniao = estado.reuniao ? { ...estado.reuniao, plano } : undefined
         if (reuniao) gravaReuniao(reuniao)
         setEstado((e) => ({ ...e, plano, reuniao: reuniao ?? e.reuniao, regerando: undefined }))
       } else {
-        const promptExecucao = await gerarPromptExecucao(contexto, (t) =>
+        const promptExecucao = await gerarPromptExecucao(ctxRegerar, (t) =>
           setEstado((e) => ({ ...e, promptExecucao: e.promptExecucao + t })),
         )
         const reuniao = estado.reuniao ? { ...estado.reuniao, promptExecucao } : undefined
@@ -247,9 +289,11 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
       <div className="sala-topo">
         <div className="sala-ideia">
           <span className="sala-ideia-rotulo">
-            {config.demo && <span className="selo-demo">DEMO</span>} Ideia em análise
+            {config.demo && <span className="selo-demo">DEMO</span>}{' '}
+            {config.pauta ? 'Acompanhamento — pauta da reunião' : 'Ideia em análise'}
           </span>
-          <p>{config.ideia}</p>
+          <p>{config.pauta ?? config.ideia}</p>
+          {config.pauta && projeto && <small className="sala-projeto-nome">Projeto: {projeto.nome}</small>}
         </div>
         <Timeline
           fase={estado.fase}
@@ -371,9 +415,20 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
             aoRegerar={() => regerarEntregavel('prompt')}
           />
           {!emAndamento && (
-            <button className="botao-principal" onClick={aoNovaReuniao}>
-              ✨ Nova reunião
-            </button>
+            <div className="sala-acoes-finais">
+              {config.projetoId && aoVerProjeto && (
+                <button
+                  className="botao-principal"
+                  onClick={() => aoVerProjeto(config.projetoId!)}
+                  title="Continuar trabalhando neste projeto com a equipe"
+                >
+                  📁 Ver projeto
+                </button>
+              )}
+              <button className="botao-principal" onClick={aoNovaReuniao}>
+                ✨ Nova reunião
+              </button>
+            </div>
           )}
         </aside>
       </div>

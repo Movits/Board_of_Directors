@@ -1,4 +1,4 @@
-import type { ItemFeedback, Provedor, Reuniao } from '../types'
+import type { ItemFeedback, Projeto, Provedor, Reuniao } from '../types'
 
 const CHAVES = {
   apiKeyLegada: 'bod.apiKey',
@@ -13,6 +13,8 @@ const CHAVES = {
   historico: 'bod.historico',
   feedback: 'bod.feedback',
   rascunho: 'bod.rascunhoIdeia',
+  projetos: 'bod.projetos',
+  githubToken: 'bod.githubToken',
 } as const
 
 const MAX_HISTORICO = 20
@@ -35,17 +37,22 @@ function le<T>(chave: string, padrao: T): T {
   }
 }
 
-function grava(chave: string, valor: unknown): void {
+/** Retorna false quando o localStorage está cheio/indisponível — quem grava
+ *  dados que o usuário não quer perder (projetos com anexos) deve checar. */
+function grava(chave: string, valor: unknown): boolean {
   try {
     localStorage.setItem(chave, JSON.stringify(valor))
+    return true
   } catch {
-    // localStorage cheio ou indisponível — falha silenciosa é aceitável aqui
+    return false
   }
 }
 
 // ── Provedor ativo ────────────────────────────────────────────────────────────
 export const leProvedor = (): Provedor => le<Provedor>(CHAVES.provedor, 'anthropic')
-export const gravaProvedor = (v: Provedor): void => grava(CHAVES.provedor, v)
+export const gravaProvedor = (v: Provedor): void => {
+  grava(CHAVES.provedor, v)
+}
 
 // ── Chaves de API (uma por provedor) ─────────────────────────────────────────
 type MapaChaves = Partial<Record<Provedor, string>>
@@ -146,7 +153,9 @@ export function removeFeedback(membroId: string, itemId: string): void {
 
 // ── Rascunho da ideia (sobrevive à navegação para Configurações) ─────────────
 export const leRascunho = (): string => le(CHAVES.rascunho, '')
-export const gravaRascunho = (v: string): void => grava(CHAVES.rascunho, v)
+export const gravaRascunho = (v: string): void => {
+  grava(CHAVES.rascunho, v)
+}
 
 // ── Histórico de reuniões ─────────────────────────────────────────────────────
 export const leHistorico = (): Reuniao[] => le(CHAVES.historico, [])
@@ -160,4 +169,79 @@ export function removeReuniao(id: string): void {
     CHAVES.historico,
     leHistorico().filter((r) => r.id !== id),
   )
+}
+
+// ── Projetos (a "mini empresa": ideia + anexos + repo + reuniões) ────────────
+
+export function leProjetos(): Projeto[] {
+  migraProjetos()
+  return le<Projeto[]>(CHAVES.projetos, [])
+}
+
+export function leProjeto(id: string): Projeto | undefined {
+  return leProjetos().find((p) => p.id === id)
+}
+
+/** Upsert por id, mais recente primeiro. Retorna false se o armazenamento
+ *  local estourou (ex.: anexos grandes demais). */
+export function gravaProjeto(projeto: Projeto): boolean {
+  const demais = le<Projeto[]>(CHAVES.projetos, []).filter((p) => p.id !== projeto.id)
+  const ordenados = [projeto, ...demais].sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm))
+  return grava(CHAVES.projetos, ordenados)
+}
+
+/** Remove o projeto e as reuniões dele no histórico. */
+export function removeProjeto(id: string): void {
+  const projeto = leProjeto(id)
+  grava(
+    CHAVES.projetos,
+    le<Projeto[]>(CHAVES.projetos, []).filter((p) => p.id !== id),
+  )
+  if (projeto) {
+    grava(
+      CHAVES.historico,
+      leHistorico().filter((r) => !projeto.reunioesIds.includes(r.id)),
+    )
+  }
+}
+
+/** Anexa uma reunião concluída ao projeto e atualiza o carimbo de atividade. */
+export function anexaReuniaoAoProjeto(projetoId: string, reuniaoId: string): void {
+  const projeto = leProjeto(projetoId)
+  if (!projeto) return
+  if (!projeto.reunioesIds.includes(reuniaoId)) projeto.reunioesIds.push(reuniaoId)
+  projeto.atualizadoEm = new Date().toISOString()
+  gravaProjeto(projeto)
+}
+
+/** Nome curto derivado da ideia (primeiras palavras). */
+export function nomeDeProjeto(ideia: string): string {
+  const palavras = ideia.trim().replace(/\s+/g, ' ').split(' ').slice(0, 7).join(' ')
+  return palavras.length > 60 ? palavras.slice(0, 57) + '…' : palavras
+}
+
+/** Migração: reuniões antigas (pré-projetos) viram um projeto cada. */
+function migraProjetos(): void {
+  if (localStorage.getItem(CHAVES.projetos) !== null) return
+  const historico = leHistorico()
+  if (historico.length === 0) {
+    grava(CHAVES.projetos, [])
+    return
+  }
+  const projetos: Projeto[] = historico.map((r) => ({
+    id: `projeto-${r.id}`,
+    nome: nomeDeProjeto(r.config.ideia),
+    criadoEm: r.data,
+    atualizadoEm: r.data,
+    ideia: r.config.ideia,
+    anexos: [],
+    reunioesIds: [r.id],
+  }))
+  grava(CHAVES.projetos, projetos)
+}
+
+// ── Token do GitHub (opcional: repositórios privados / limite maior) ─────────
+export const leGithubToken = (): string => le(CHAVES.githubToken, '')
+export const gravaGithubToken = (v: string): void => {
+  grava(CHAVES.githubToken, v)
 }

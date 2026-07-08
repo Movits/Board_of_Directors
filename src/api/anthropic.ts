@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import type { Transporte } from '../types'
+import type { Anexo, Transporte } from '../types'
 
 export const MODELOS_ANTHROPIC = [
   { id: 'claude-opus-4-8', rotulo: 'Claude Opus 4.8', detalhe: 'máxima qualidade (~US$1–2 por reunião)' },
@@ -44,6 +44,28 @@ function traduzErro(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err))
 }
 
+/** Conteúdo multimodal: blocos de imagem/PDF antes do texto (ordem recomendada). */
+function montaConteudo(user: string, anexos?: Anexo[]): string | Anthropic.ContentBlockParam[] {
+  const midia = (anexos ?? []).filter((a) => a.tipo === 'imagem' || a.tipo === 'pdf')
+  if (midia.length === 0) return user
+  const blocos: Anthropic.ContentBlockParam[] = midia.map((a) =>
+    a.tipo === 'pdf'
+      ? {
+          type: 'document' as const,
+          source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: a.dados },
+        }
+      : {
+          type: 'image' as const,
+          source: {
+            type: 'base64' as const,
+            media_type: a.mime as 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif',
+            data: a.dados,
+          },
+        },
+  )
+  return [...blocos, { type: 'text' as const, text: user }]
+}
+
 function extraiTexto(mensagem: Anthropic.Message): string {
   if (mensagem.stop_reason === 'refusal') {
     throw new Error('A API recusou esta solicitação por política de segurança.')
@@ -71,7 +93,7 @@ export function criaTransporteAnthropic(apiKey: string, modelo: string): Transpo
   const thinking = suportaAdaptive(modelo) ? ({ type: 'adaptive' } as const) : undefined
 
   return {
-    async estruturada({ system, user, schema, signal }) {
+    async estruturada({ system, user, schema, signal, anexos }) {
       try {
         const stream = client.messages.stream(
           {
@@ -80,7 +102,7 @@ export function criaTransporteAnthropic(apiKey: string, modelo: string): Transpo
             system,
             ...(thinking ? { thinking } : {}),
             output_config: { format: { type: 'json_schema', schema: schema as Record<string, unknown> } },
-            messages: [{ role: 'user', content: user }],
+            messages: [{ role: 'user', content: montaConteudo(user, anexos) }],
           },
           { signal },
         )
@@ -90,7 +112,7 @@ export function criaTransporteAnthropic(apiKey: string, modelo: string): Transpo
       }
     },
 
-    async streamada({ system, user, onDelta, signal }) {
+    async streamada({ system, user, onDelta, signal, anexos }) {
       try {
         const stream = client.messages.stream(
           {
@@ -98,7 +120,7 @@ export function criaTransporteAnthropic(apiKey: string, modelo: string): Transpo
             max_tokens: 16000,
             system,
             ...(thinking ? { thinking } : {}),
-            messages: [{ role: 'user', content: user }],
+            messages: [{ role: 'user', content: montaConteudo(user, anexos) }],
           },
           { signal },
         )

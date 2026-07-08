@@ -29,8 +29,8 @@ App: https://movits.github.io/Board_of_Directors/ · [[Visão Geral|arquitetura]
 
 ## Conceitos
 
-[[Reunião]] · [[Debate]] · [[Consenso Pleno]] · [[Votos]] · [[Entregáveis]] ·
-[[Feedback Local]] · [[Modo Demonstração]] · [[Provedores]]
+[[Projetos]] · [[Reunião]] · [[Debate]] · [[Consenso Pleno]] · [[Votos]] ·
+[[Entregáveis]] · [[Feedback Local]] · [[Modo Demonstração]] · [[Provedores]]
 
 ## Arquitetura
 

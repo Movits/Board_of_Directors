@@ -22,8 +22,6 @@ implementados, por horizonte.
 - Higiene: versionamento do [[Armazenamento Local]], lazy-load dos SDKs.
 
 ## Longo prazo
-- **Reunião de acompanhamento de 90 dias** reinjetando placar e ressalvas
-  ([[Tiago Freitas|CS]], [[Helena Vasquez|Presidente]]).
 - **Painel do Conselho**: analytics 100% local sobre o histórico
   ([[Larissa Fontes|Dados]]).
 - **Compartilhar veredito** como imagem + nome próprio buscável
@@ -33,6 +31,8 @@ implementados, por horizonte.
 ## Feito (era backlog)
 - ~~Governança anti-conformismo do conselho~~ → virou o [[Consenso Pleno]]
   (rodada 6).
+- ~~Reunião de acompanhamento~~ ([[Tiago Freitas|CS]], [[Helena Vasquez|Presidente]])
+  → virou os [[Projetos]] com reuniões de acompanhamento (rodada 7).
 
 ## Relacionado
 [[Registro de Decisões]]
