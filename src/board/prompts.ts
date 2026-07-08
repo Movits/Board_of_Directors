@@ -55,8 +55,23 @@ function resumoPosicao(membro: Membro, r1: AnaliseRodada1, debates: AnaliseDebat
     `Pontos principais: ${r1.estrategias.slice(0, 3).join(' | ')}`,
     `Riscos apontados: ${r1.riscos.slice(0, 3).join(' | ')}`,
   ]
+  const ressalvas = ultimo?.ressalvas_pendentes ?? []
+  if (ultimo?.voto === 'aprovar_com_ressalvas' && ressalvas.length > 0) {
+    linhas.push(`Ressalvas pendentes dele: ${ressalvas.join(' | ')}`)
+  }
   return linhas.join('\n')
 }
+
+/** Instruções extras do debate quando a reunião busca consenso pleno. */
+const REGRAS_CONSENSO_PLENO = `
+
+REGRA DESTA REUNIÃO — CONSENSO PLENO: o debate só termina quando TODOS os conselheiros votarem "Aprovar" ou TODOS votarem "Rejeitar". "Aprovar com ressalvas" NÃO encerra a reunião: ressalva é pendência a resolver, não destino final.
+
+Como agir nesta rodada:
+- Se seu voto é "Aprovar com ressalvas": declare cada ressalva no campo ressalvas_pendentes como uma CONDIÇÃO concreta e verificável — o que precisa ser decidido, validado ou mudado para você migrar para "Aprovar". Se os colegas já endereçaram alguma condição sua, reconheça nas reações e retire-a da lista.
+- Responda às ressalvas pendentes dos colegas: aceite a condição (incorpore-a ao plano), proponha uma solução que a resolva, ou rebata com argumento técnico. Ignorar a ressalva de um colega não a resolve.
+- Se seu voto é "Rejeitar": explique o motivo central e diga EXPLICITAMENTE o que faria você mudar de voto.
+- Só migre para "Aprovar" quando suas condições forem genuinamente endereçadas. NÃO ceda por cansaço, pressão do grupo ou conformismo: uma divergência honesta registrada em ata vale mais que um consenso forçado.`
 
 export function promptDebate(
   ideia: string,
@@ -64,6 +79,7 @@ export function promptDebate(
   meusDebates: AnaliseDebate[],
   colegas: { membro: Membro; estado: EstadoMembro }[],
   rodada: number,
+  ateConsenso: boolean,
 ): string {
   const meuVotoAtual = meusDebates.length > 0 ? meusDebates[meusDebates.length - 1].voto : minhaAnalise.voto
   const posicoes = colegas
@@ -71,6 +87,8 @@ export function promptDebate(
     .map(({ membro, estado }) => resumoPosicao(membro, estado.rodada1!, estado.debate))
     .join('\n\n')
 
+  // Atenção: o início ("Rodada de debate nº N"), a linha "Seu voto atual é: X ("
+  // e os cabeçalhos "### Nome (Cargo)" são âncoras parseadas pelo modo demo.
   return `Rodada de debate nº ${rodada} sobre a ideia:
 
 <ideia>
@@ -83,12 +101,22 @@ Posições atuais dos demais conselheiros:
 
 ${posicoes}
 
-Agora debata: reaja às posições dos colegas com quem você mais concorda ou discorda (cite-os pelo nome), defenda ou ajuste sua posição e declare seu voto final desta rodada. Mudar de voto diante de bons argumentos é sinal de senioridade, não de fraqueza — mas não mude por mudar.`
+Agora debata: reaja às posições dos colegas com quem você mais concorda ou discorda (cite-os pelo nome), defenda ou ajuste sua posição e declare seu voto final desta rodada. Mudar de voto diante de bons argumentos é sinal de senioridade, não de fraqueza — mas não mude por mudar.${ateConsenso ? REGRAS_CONSENSO_PLENO : ''}`
+}
+
+/** Situação do consenso pleno ao final do debate (só no modo "até consenso"). */
+export interface InfoConsenso {
+  alcancado: boolean
+  /** Rodada do consenso (0 = já nas análises iniciais). */
+  rodada?: number
+  voto?: Voto
+  maxRodadas: number
 }
 
 export function promptSintese(
   ideia: string,
   participantes: { membro: Membro; estado: EstadoMembro }[],
+  consenso?: InfoConsenso,
 ): string {
   const blocos = participantes
     .filter(({ estado }) => estado.rodada1)
@@ -106,13 +134,24 @@ export function promptSintese(
       ]
       debates.forEach((d, i) => {
         const reacoes = d.reacoes.map((r) => `para ${r.para}: ${r.comentario}`).join(' || ')
+        const ressalvas = d.ressalvas_pendentes ?? []
         partes.push(
-          `Debate ${i + 1}: voto ${ROTULO_VOTO[d.voto]}${d.mudou_voto ? ' (MUDOU DE VOTO)' : ''} — ${d.justificativa}${reacoes ? ` — Reações: ${reacoes}` : ''}`,
+          `Debate ${i + 1}: voto ${ROTULO_VOTO[d.voto]}${d.mudou_voto ? ' (MUDOU DE VOTO)' : ''} — ${d.justificativa}${reacoes ? ` — Reações: ${reacoes}` : ''}${ressalvas.length > 0 ? ` — Ressalvas pendentes: ${ressalvas.join(' | ')}` : ''}`,
         )
       })
       return partes.join('\n')
     })
     .join('\n\n')
+
+  const notaConsenso = !consenso
+    ? ''
+    : consenso.alcancado
+      ? `
+
+Esta reunião rodou em modo CONSENSO PLENO e o consenso (${consenso.voto ? ROTULO_VOTO[consenso.voto] : '—'}) foi alcançado na rodada ${consenso.rodada}. Na síntese, registre quais ressalvas/condições foram declaradas ao longo do debate e COMO cada uma foi resolvida ou acordada — elas são compromissos do plano.`
+      : `
+
+Esta reunião rodou em modo CONSENSO PLENO, mas o consenso NÃO foi alcançado após ${consenso.maxRodadas} rodadas de debate. Na síntese, liste as ressalvas e divergências remanescentes por conselheiro e o que destravaria cada uma — o empreendedor decidirá com esse mapa.`
 
   return `A reunião do conselho sobre a ideia abaixo foi concluída. Como Presidente, produza a síntese final.
 
@@ -122,7 +161,7 @@ ${ideia}
 
 Registro completo da reunião (análises, debates e votos finais):
 
-${blocos}
+${blocos}${notaConsenso}
 
 Escreva a síntese final do conselho em markdown, com esta estrutura:
 

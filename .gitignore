@@ -3,3 +3,6 @@ dist/
 *.tsbuildinfo
 *.local
 .DS_Store
+
+# Configuração local do Obsidian (cada máquina tem a sua)
+brain/.obsidian/

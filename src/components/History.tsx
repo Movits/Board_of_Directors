@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Reuniao } from '../types'
 import { leHistorico, removeReuniao } from '../lib/storage'
-import { exportaMarkdown } from '../lib/exportar'
+import { exportaMarkdown, exportaObsidian } from '../lib/exportar'
 
 interface Props {
   aoAbrir: (reuniao: Reuniao) => void
@@ -38,6 +38,9 @@ export function History({ aoAbrir }: Props) {
               </span>
             </button>
             <div className="historico-acoes">
+              <button onClick={() => exportaObsidian(r)} title="Exportar ata (Obsidian)">
+                🧠
+              </button>
               <button onClick={() => exportaMarkdown(r)} title="Exportar Markdown">
                 ⬇︎
               </button>

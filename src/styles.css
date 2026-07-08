@@ -398,6 +398,16 @@ input:focus {
   border-color: rgba(76, 175, 125, 0.5);
 }
 
+.aviso-consenso-rejeicao {
+  background: rgba(226, 87, 76, 0.1);
+  border-color: rgba(226, 87, 76, 0.5);
+}
+
+.aviso-sem-consenso {
+  background: rgba(224, 168, 60, 0.08);
+  border-color: rgba(224, 168, 60, 0.4);
+}
+
 .link {
   color: var(--ouro-claro);
   text-decoration: underline;
@@ -465,6 +475,23 @@ input:focus {
 
 .painel-erro-nota {
   color: var(--vermelho);
+}
+
+.ressalvas-titulo {
+  margin: 10px 0 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ambar);
+}
+
+.lista-ressalvas {
+  margin: 0 0 10px;
+  padding-left: 22px;
+  font-size: 0.9rem;
+}
+
+.lista-ressalvas li {
+  margin: 3px 0;
 }
 
 .feedback-demo-nota,

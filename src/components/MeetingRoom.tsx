@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ConfigReuniao, EstadoMembro, FaseReuniao, Plano, Reuniao } from '../types'
+import type { ConfigReuniao, EstadoMembro, FaseReuniao, Plano, Reuniao, Voto } from '../types'
 import { MEMBROS, MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from '../board/members'
 import {
   conduzirReuniao,
   calculaPlacar,
   gerarPlano,
   gerarPromptExecucao,
+  votoDoConsenso,
+  MAX_RODADAS_CONSENSO,
   type ContextoEntregavel,
 } from '../board/orchestrator'
 import { personaEfetiva } from '../board/prompts'
@@ -46,6 +48,8 @@ interface EstadoUI {
   promptExecucao: string
   plano?: Plano
   consensoNaRodada?: number
+  /** Voto do consenso pleno ('aprovar' | 'rejeitar'); indefinido em registros antigos. */
+  consensoVoto?: Voto
   erro?: string
   reuniao?: Reuniao
   /** Falha na geração de um entregável (a reunião continua válida). */
@@ -65,6 +69,7 @@ function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
       promptExecucao: existente.promptExecucao ?? '',
       plano: existente.plano,
       consensoNaRodada: existente.consensoNaRodada,
+      consensoVoto: existente.consensoVoto ?? votoDoConsenso(existente),
       reuniao: existente,
     }
   }
@@ -152,7 +157,8 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
               },
             },
           })),
-        onConsenso: (rodada) => setEstado((e) => ({ ...e, consensoNaRodada: rodada })),
+        onConsenso: (rodada, voto) =>
+          setEstado((e) => ({ ...e, consensoNaRodada: rodada, consensoVoto: voto })),
         onVereditoDelta: (texto) => setEstado((e) => ({ ...e, veredito: e.veredito + texto })),
         onPlano: (plano) => setEstado((e) => ({ ...e, plano })),
         onPromptDelta: (texto) =>
@@ -261,14 +267,44 @@ export function MeetingRoom({ config, existente, aoNovaReuniao }: Props) {
         </div>
       )}
 
-      {estado.consensoNaRodada !== undefined && (
-        <div className="aviso aviso-consenso">
-          🤝 <strong>Consenso alcançado!</strong>{' '}
-          {estado.consensoNaRodada === 0
-            ? 'Os conselheiros já concordaram nas análises iniciais — não houve necessidade de debate.'
-            : `Todos os conselheiros convergiram para o mesmo voto após ${estado.consensoNaRodada} rodada${estado.consensoNaRodada > 1 ? 's' : ''} de debate.`}
-        </div>
-      )}
+      {estado.consensoNaRodada !== undefined &&
+        (estado.consensoVoto === 'aprovar' ? (
+          <div className="aviso aviso-consenso">
+            🤝 <strong>Consenso pleno alcançado!</strong> Todos os conselheiros votaram{' '}
+            <strong>Aprovar</strong>
+            {estado.consensoNaRodada === 0
+              ? ' já nas análises iniciais — não houve necessidade de debate.'
+              : ` — as ressalvas foram debatidas e resolvidas em ${estado.consensoNaRodada} rodada${estado.consensoNaRodada > 1 ? 's' : ''} de debate.`}
+          </div>
+        ) : estado.consensoVoto === 'rejeitar' ? (
+          <div className="aviso aviso-consenso-rejeicao">
+            🛑 <strong>Consenso pleno: rejeição unânime.</strong> Todos os conselheiros votaram{' '}
+            <strong>Rejeitar</strong>
+            {estado.consensoNaRodada === 0
+              ? ' já nas análises iniciais.'
+              : ` após ${estado.consensoNaRodada} rodada${estado.consensoNaRodada > 1 ? 's' : ''} de debate.`}{' '}
+            A síntese da Presidente registra o que faria o conselho mudar de posição.
+          </div>
+        ) : (
+          // Registro antigo: a regra anterior aceitava unanimidade de ressalvas.
+          <div className="aviso aviso-consenso">
+            🤝 <strong>Consenso alcançado</strong> (reunião anterior à regra do consenso pleno):
+            todos convergiram para o mesmo voto
+            {estado.consensoNaRodada > 0
+              ? ` após ${estado.consensoNaRodada} rodada${estado.consensoNaRodada > 1 ? 's' : ''} de debate.`
+              : ' nas análises iniciais.'}
+          </div>
+        ))}
+
+      {config.ateConsenso &&
+        estado.consensoNaRodada === undefined &&
+        ['sintese', 'plano', 'prompt', 'concluida'].includes(estado.fase) && (
+          <div className="aviso aviso-sem-consenso">
+            ⚖️ <strong>Consenso pleno não alcançado</strong> após {MAX_RODADAS_CONSENSO} rodadas de
+            debate — ressalvas e divergências permanecem. A síntese da Presidente mapeia o que
+            destravaria cada uma.
+          </div>
+        )}
 
       <div className="sala-corpo">
         <section className="grade-membros" aria-label="Conselheiros">

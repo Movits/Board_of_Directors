@@ -27,8 +27,8 @@ export function Timeline({ fase, rodadaDebate, totalDebates, ateConsenso, gerarP
 
   const rotuloDebate = ateConsenso
     ? fase === 'debate'
-      ? `Debate ${rodadaDebate} (consenso)`
-      : 'Debate até consenso'
+      ? `Debate ${rodadaDebate} (consenso pleno)`
+      : 'Debate até consenso pleno'
     : totalDebates > 1 && fase === 'debate'
       ? `Debate ${rodadaDebate}/${totalDebates}`
       : 'Debate'

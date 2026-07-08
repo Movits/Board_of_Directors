@@ -253,7 +253,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             </div>
             <span className="campo-dica">
               {modoDebate === 'consenso'
-                ? 'O debate se repete até TODOS os conselheiros votarem igual (máximo de 5 rodadas — atenção ao custo).'
+                ? 'O debate se repete até TODOS votarem Aprovar ou TODOS votarem Rejeitar. Ressalvas não encerram: viram condições debatidas até serem resolvidas (máximo de 5 rodadas — atenção ao custo).'
                 : 'No debate, os conselheiros leem as posições uns dos outros, rebatem e podem mudar de voto.'}
             </span>
           </fieldset>

@@ -5,7 +5,28 @@ import { MEMBROS } from './members'
 // Compartilha o MESMO orquestrador do modo real — só troca a camada de transporte.
 
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const sorteia = <T>(lista: T[]): T => lista[Math.floor(Math.random() * lista.length)]
+
+/** PRNG determinístico (mulberry32) — usado só quando bod.seedDemo existe,
+ *  para testes automatizados reproduzirem a mesma reunião demo. */
+function mulberry32(semente: number): () => number {
+  let a = semente >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+let rnd: () => number = Math.random
+try {
+  const semente = Number(localStorage.getItem('bod.seedDemo'))
+  if (Number.isFinite(semente) && semente > 0) rnd = mulberry32(semente)
+} catch {
+  // localStorage indisponível — segue aleatório de verdade
+}
+
+const sorteia = <T>(lista: T[]): T => lista[Math.floor(rnd() * lista.length)]
 
 const VOTOS_PONDERADOS: Voto[] = [
   'aprovar',
@@ -185,10 +206,28 @@ const COMENTARIOS_DEBATE = [
   (n: string) => `${n} levantou algo que eu não tinha considerado; ajustei meu peso de risco por causa disso.`,
 ]
 
+/** Condições que os conselheiros "com ressalvas" declaram no modo consenso. */
+const RESSALVAS_DEMO = [
+  'Validar a demanda com lista de espera (≥ 100 inscritos) antes de investir em produto',
+  'Definir um teto de gasto mensal para a fase de testes',
+  'Fechar o acordo de sócios antes da primeira receita',
+  'Confirmar o custo de aquisição em um teste com verba mínima',
+  'Registrar a marca no INPI antes do lançamento público',
+]
+
+function sorteiaRessalvas(): string[] {
+  const primeira = sorteia(RESSALVAS_DEMO)
+  if (rnd() < 0.4) {
+    const segunda = sorteia(RESSALVAS_DEMO.filter((r) => r !== primeira))
+    return [primeira, segunda]
+  }
+  return [primeira]
+}
+
 export function criaTransporteDemo(): Transporte {
   return {
     async estruturada({ user, membroId }) {
-      await espera(600 + Math.random() * 1800)
+      await espera(600 + rnd() * 1800)
 
       if (user.includes('PLANO DE NEGÓCIO COMPLETO')) {
         const ideia = user.match(/<ideia>\n([\s\S]*?)\n<\/ideia>/)?.[1] ?? 'sua ideia'
@@ -217,21 +256,25 @@ export function criaTransporteDemo(): Transporte {
       const votoAtual: Voto =
         votoAtualTexto === 'Aprovar' ? 'aprovar' : votoAtualTexto === 'Rejeitar' ? 'rejeitar' : 'aprovar_com_ressalvas'
       const colegas = [...user.matchAll(/### (.+?) \(/g)].map((m) => m[1])
-      const alvos = colegas.sort(() => Math.random() - 0.5).slice(0, Math.min(2, colegas.length))
-      // Convergência gradual rumo ao voto majoritário: quanto mais rodadas,
-      // maior a chance de ceder — simula um debate que caminha para consenso.
+      const alvos = colegas.sort(() => rnd() - 0.5).slice(0, Math.min(2, colegas.length))
+      // Convergência gradual para a APROVAÇÃO PLENA: com a regra do consenso,
+      // ressalvas não encerram a reunião — o demo simula condições sendo
+      // debatidas e resolvidas até todos aprovarem.
       const rodada = Number(user.match(/Rodada de debate nº (\d+)/)?.[1] ?? '1')
-      const alvoConsenso: Voto = 'aprovar_com_ressalvas'
-      const chanceConvergir = rodada >= 3 ? 0.9 : rodada === 2 ? 0.6 : 0.15
-      const mudou = votoAtual !== alvoConsenso && Math.random() < chanceConvergir
+      const alvoConsenso: Voto = 'aprovar'
+      const chanceConvergir = rodada >= 3 ? 0.95 : rodada === 2 ? 0.7 : 0.25
+      const mudou = votoAtual !== alvoConsenso && rnd() < chanceConvergir
       const voto: Voto = mudou ? alvoConsenso : votoAtual
       const r: AnaliseDebate = {
         reacoes: alvos.map((n) => ({ para: n, comentario: sorteia(COMENTARIOS_DEBATE)(n) })),
         mudou_voto: mudou,
         voto,
         justificativa: mudou
-          ? 'O debate trouxe argumentos que mudaram meu cálculo de risco — ajustei o voto.'
-          : 'O debate reforçou minha leitura; mantenho o voto com mais convicção.',
+          ? 'Minhas condições foram endereçadas no debate — migro para a aprovação plena.'
+          : voto === 'aprovar_com_ressalvas'
+            ? 'Mantenho o voto: minhas condições ainda não foram resolvidas pelos colegas.'
+            : 'O debate reforçou minha leitura; mantenho o voto com mais convicção.',
+        ressalvas_pendentes: voto === 'aprovar_com_ressalvas' ? sorteiaRessalvas() : [],
       }
       return JSON.stringify(r)
     },
@@ -245,7 +288,7 @@ export function criaTransporteDemo(): Transporte {
       for (const p of palavras) {
         completo += p
         onDelta(p)
-        await espera(6 + Math.random() * 14)
+        await espera(6 + rnd() * 14)
       }
       return completo
     },
@@ -255,10 +298,10 @@ export function criaTransporteDemo(): Transporte {
 function textoVereditoDemo(ideia: string): string {
   return `# Veredito do Conselho
 
-**[DEMO]** O conselho recomenda **aprovar com ressalvas**: a ideia "${resumo(ideia)}" tem mérito, mas o avanço deve ser condicionado às validações apontadas abaixo.
+**[DEMO]** O conselho recomenda **aprovar**: a ideia "${resumo(ideia)}" tem mérito, e o avanço fica condicionado às validações apontadas abaixo — condições levantadas como ressalvas e acordadas durante o debate.
 
 ## Placar e leitura da votação
-A maioria votou por aprovar com ressalvas. Não houve unanimidade — as divergências vieram principalmente das áreas financeira e comercial, o que indica que o risco central do projeto é de **modelo de negócio**, não de execução técnica.
+O conselho convergiu para a aprovação ao longo do debate. As divergências de percurso vieram principalmente das áreas financeira e comercial, o que indica que o risco central do projeto é de **modelo de negócio**, não de execução técnica.
 
 ## Consensos
 - O problema atacado é real e o momento de mercado é favorável.
@@ -339,7 +382,7 @@ function planoDemo(ideia: string): Plano {
     titulo: `Plano de Negócio — ${resumo(ideia)}`,
     subtitulo: '[DEMO] Documento de exemplo gerado no modo demonstração',
     resumo_executivo:
-      'Este é um plano de exemplo do modo demonstração. Com uma API de IA conectada, o conselho compila aqui a decisão da reunião em um plano completo e específico para a sua ideia.\n\nO conselho recomendou aprovar com ressalvas, condicionando o avanço às validações de demanda descritas no roadmap. O plano prioriza velocidade de aprendizado com investimento mínimo.',
+      'Este é um plano de exemplo do modo demonstração. Com uma API de IA conectada, o conselho compila aqui a decisão da reunião em um plano completo e específico para a sua ideia.\n\nO conselho recomendou aprovar, tratando as validações de demanda como condições incorporadas ao roadmap. O plano prioriza velocidade de aprendizado com investimento mínimo.',
     publico_alvo:
       'Adotantes iniciais urbanos, 25–45 anos, que já usam soluções digitais no dia a dia e valorizam conveniência — começando por um nicho específico antes de expandir.',
     proposta_valor: 'O jeito mais simples de resolver o problema central do público, sem fricção e com confiança desde o primeiro uso.',

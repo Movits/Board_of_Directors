@@ -201,6 +201,16 @@ export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
                         <strong>Para {r.para}:</strong> {r.comentario}
                       </p>
                     ))}
+                    {(d.ressalvas_pendentes ?? []).length > 0 && (
+                      <>
+                        <p className="ressalvas-titulo">📌 Ressalvas pendentes declaradas:</p>
+                        <ul className="lista-ressalvas">
+                          {d.ressalvas_pendentes!.map((r, j) => (
+                            <li key={j}>{r}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                     <p className="voto-linha">
                       Voto após o debate: <strong>{ROTULO_VOTO[d.voto]}</strong>
                       <br />

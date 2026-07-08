@@ -209,7 +209,13 @@ export const SCHEMA_DEBATE = {
       type: 'string',
       description: 'Justificativa do voto atual em 1 a 3 frases (mencione o que o debate mudou ou reforçou).',
     },
+    ressalvas_pendentes: {
+      type: 'array',
+      items: { type: 'string' },
+      description:
+        'Se seu voto é "aprovar_com_ressalvas": liste cada ressalva como uma condição CONCRETA que ainda bloqueia sua aprovação plena (o que precisa acontecer para você votar "aprovar"). Se seu voto é "aprovar" ou "rejeitar", retorne uma lista vazia.',
+    },
   },
-  required: ['reacoes', 'mudou_voto', 'voto', 'justificativa'],
+  required: ['reacoes', 'mudou_voto', 'voto', 'justificativa', 'ressalvas_pendentes'],
   additionalProperties: false,
 } as const

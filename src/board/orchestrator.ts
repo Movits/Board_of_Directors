@@ -53,6 +53,15 @@ export function calculaPlacar(membros: Record<string, EstadoMembro>): Placar {
   return placar
 }
 
+/** Voto do consenso de uma reunião salva. Registros antigos (regra anterior
+ *  aceitava unanimidade de ressalvas) não têm consensoVoto: deriva do placar. */
+export function votoDoConsenso(reuniao: Reuniao): Voto | undefined {
+  if (reuniao.consensoNaRodada === undefined) return undefined
+  if (reuniao.consensoVoto) return reuniao.consensoVoto
+  const entradas = (Object.entries(reuniao.placar) as [Voto, number][]).filter(([, n]) => n > 0)
+  return entradas.length === 1 ? entradas[0][0] : undefined
+}
+
 export interface OpcoesReuniao {
   config: ConfigReuniao
   transporte: Transporte
@@ -146,21 +155,28 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
     }
 
     // ── Rodadas de debate ────────────────────────────────────────────────────
-    const unanimidade = (): Voto | null => {
+    // Consenso PLENO: todos 'aprovar' ou todos 'rejeitar'. Unanimidade de
+    // "aprovar com ressalvas" NÃO encerra — ressalva é pendência a debater.
+    const consensoPleno = (): 'aprovar' | 'rejeitar' | null => {
       const votos = ativos.map((m) => votoFinalDe(membros[m.id])).filter((v): v is Voto => Boolean(v))
       if (votos.length < ativos.length) return null
-      return votos.every((v) => v === votos[0]) ? votos[0] : null
+      const primeiro = votos[0]
+      if (primeiro === 'aprovar_com_ressalvas') return null
+      return votos.every((v) => v === primeiro) ? primeiro : null
     }
 
     const maxRodadas = config.ateConsenso ? MAX_RODADAS_CONSENSO : config.rodadasDebate
     let consensoNaRodada: number | undefined
+    let consensoVoto: Voto | undefined
 
     for (let rodada = 1; rodada <= maxRodadas; rodada++) {
       if (cancelado()) return null
-      // No modo consenso, se todos já concordam não há o que debater.
-      if (config.ateConsenso && unanimidade()) {
+      // No modo consenso, se o pleno já foi atingido não há o que debater.
+      const votoConsenso = config.ateConsenso ? consensoPleno() : null
+      if (votoConsenso) {
         consensoNaRodada = rodada - 1
-        eventos.onConsenso(rodada - 1)
+        consensoVoto = votoConsenso
+        eventos.onConsenso(rodada - 1, votoConsenso)
         break
       }
       eventos.onFase('debate', rodada)
@@ -180,6 +196,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
                 membros[m.id].debate ?? [],
                 colegas,
                 rodada,
+                config.ateConsenso,
               ),
               schema: SCHEMA_DEBATE as unknown as Record<string, unknown>,
               membroId: m.id,
@@ -203,9 +220,13 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
       )
     }
     // Consenso alcançado na última rodada possível: registra também.
-    if (config.ateConsenso && consensoNaRodada === undefined && unanimidade()) {
-      consensoNaRodada = maxRodadas
-      eventos.onConsenso(maxRodadas)
+    if (config.ateConsenso && consensoNaRodada === undefined) {
+      const votoConsenso = consensoPleno()
+      if (votoConsenso) {
+        consensoNaRodada = maxRodadas
+        consensoVoto = votoConsenso
+        eventos.onConsenso(maxRodadas, votoConsenso)
+      }
     }
     if (cancelado()) return null
 
@@ -217,6 +238,14 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
       user: promptSintese(
         config.ideia,
         ativos.map((m) => ({ membro: m, estado: membros[m.id] })),
+        config.ateConsenso
+          ? {
+              alcancado: consensoNaRodada !== undefined,
+              rodada: consensoNaRodada,
+              voto: consensoVoto,
+              maxRodadas: MAX_RODADAS_CONSENSO,
+            }
+          : undefined,
       ),
       proposito: 'sintese',
       onDelta: (t) => {
@@ -281,6 +310,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
       placar: calculaPlacar(membros),
       fase: 'concluida',
       consensoNaRodada,
+      consensoVoto,
     }
     eventos.onFase('concluida')
     eventos.onConcluida(reuniao)

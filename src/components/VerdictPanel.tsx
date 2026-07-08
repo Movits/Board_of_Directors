@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { Reuniao } from '../types'
 import { Markdown } from '../lib/markdown'
-import { exportaJson, exportaMarkdown } from '../lib/exportar'
+import { exportaJson, exportaMarkdown, exportaObsidian } from '../lib/exportar'
 
 interface Props {
   veredito: string
@@ -34,6 +34,12 @@ export function VerdictPanel({ veredito, streamando, reuniao }: Props) {
       </div>
       {reuniao && (
         <div className="veredito-acoes">
+          <button
+            onClick={() => exportaObsidian(reuniao)}
+            title="Ata com frontmatter e [[wikilinks]] — solte em brain/reuniões do vault"
+          >
+            🧠 Exportar ata (Obsidian)
+          </button>
           <button onClick={() => exportaMarkdown(reuniao)}>⬇︎ Exportar Markdown</button>
           <button onClick={() => exportaJson(reuniao)}>⬇︎ Exportar JSON</button>
         </div>

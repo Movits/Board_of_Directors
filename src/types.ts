@@ -33,6 +33,9 @@ export interface AnaliseDebate {
   mudou_voto: boolean
   voto: Voto
   justificativa: string
+  /** Condições concretas que ainda bloqueiam a aprovação plena (modo consenso).
+   *  Opcional: reuniões antigas no histórico não têm o campo. */
+  ressalvas_pendentes?: string[]
 }
 
 export type StatusMembro = 'aguardando' | 'analisando' | 'pronto' | 'erro'
@@ -109,7 +112,8 @@ export interface ConfigReuniao {
   membrosIds: string[]
   /** Rodadas fixas de debate (1 a 3) — ignorado quando ateConsenso=true. */
   rodadasDebate: number
-  /** Debate continua até todos votarem igual (com teto de segurança). */
+  /** Debate continua até o consenso PLENO — todos 'aprovar' ou todos
+   *  'rejeitar'; ressalvas não encerram (com teto de segurança). */
   ateConsenso: boolean
   /** Gerar o prompt de execução (para agentes de programação) ao final. */
   gerarPrompt: boolean
@@ -128,8 +132,11 @@ export interface Reuniao {
   plano?: Plano
   placar: Placar
   fase: FaseReuniao
-  /** Em modo consenso: rodada em que a unanimidade foi alcançada (se foi). */
+  /** Em modo consenso: rodada em que o consenso PLENO foi alcançado (se foi). */
   consensoNaRodada?: number
+  /** Voto do consenso pleno ('aprovar' | 'rejeitar'). Ausente em reuniões
+   *  antigas (regra anterior aceitava unanimidade de ressalvas) ou sem consenso. */
+  consensoVoto?: Voto
 }
 
 export interface EventosReuniao {
@@ -137,7 +144,7 @@ export interface EventosReuniao {
   onStatusMembro: (membroId: string, status: StatusMembro, erro?: string) => void
   onRodada1: (membroId: string, resultado: AnaliseRodada1) => void
   onDebate: (membroId: string, rodada: number, resultado: AnaliseDebate) => void
-  onConsenso: (rodada: number) => void
+  onConsenso: (rodada: number, voto: Voto) => void
   onDebateFalhou: (membroId: string, rodada: number) => void
   onVereditoDelta: (texto: string) => void
   onPlano: (plano: Plano) => void

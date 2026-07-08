@@ -30,7 +30,7 @@ Todas as personas são **editáveis** em *Configurações → Personas dos conse
 ## Como funciona a reunião
 
 1. **Análises independentes** — cada conselheiro estuda a ideia pela ótica da sua especialidade: análise, estratégias, riscos, perguntas críticas e voto preliminar.
-2. **Debate** (1, 2 ou 3 rodadas — ou **até consenso**) — cada um lê as posições dos colegas, rebate citando-os pelo nome e pode **mudar de voto**. No modo consenso, o debate se repete até todos votarem igual (máximo de 5 rodadas).
+2. **Debate** (1, 2 ou 3 rodadas — ou **até consenso pleno**) — cada um lê as posições dos colegas, rebate citando-os pelo nome e pode **mudar de voto**. No modo consenso, a reunião só encerra quando **todos votarem Aprovar ou todos votarem Rejeitar**: ressalvas não encerram — viram **condições declaradas** (`ressalvas pendentes`) que os colegas precisam aceitar, resolver ou rebater, rodada após rodada (máximo de 5). Quem rejeita explica o que o faria mudar de voto, e ninguém deve ceder por conformismo.
 3. **Síntese** — a Presidente consolida: placar, consensos, divergências, riscos e um plano de ação para 7/30/90 dias.
 4. **Entregáveis** (opcionais) — 📄 o **plano detalhado** em documento visual com download em PDF (análise de mercado, SWOT, cronograma, orçamento com gráficos, riscos), e 🚀 o **prompt de execução** autossuficiente para colar num agente de programação. O conselho decide; quem executa é você — ou seu agente.
 
@@ -39,6 +39,12 @@ Todas as personas são **editáveis** em *Configurações → Personas dos conse
 Clique em qualquer conselheiro para ver a análise completa e **avaliar as respostas com 👍/👎** (com comentário opcional). O feedback muda o comportamento **apenas daquele agente** nas próximas reuniões — os aprendizados ficam na aba *Configuração* da gaveta, onde também dá para **editar a persona** (system prompt) dele diretamente.
 
 Votos possíveis: ✅ Aprovar · ⚠️ Aprovar com ressalvas · ❌ Rejeitar.
+
+## Second brain (`brain/`) — o cérebro do projeto no Obsidian
+
+A pasta [`brain/`](brain) é um **vault do Obsidian**: notas interconectadas sobre os conselheiros, os conceitos (reunião, debate, consenso pleno…), a arquitetura e as decisões do projeto. Abra com *Open folder as vault* e explore pelo grafo.
+
+Toda reunião concluída tem o botão **🧠 Exportar ata (Obsidian)** (no veredito e no Histórico): baixa a ata como `.md` com frontmatter e `[[wikilinks]]` para os conselheiros — solte o arquivo em `brain/reuniões/` e a reunião entra no grafo do seu second brain.
 
 ## Provedores de IA — use a API que quiser
 
