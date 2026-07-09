@@ -34,6 +34,24 @@ produto.
   pacote jurídico (Sobre & privacidade + LICENSE MIT), texto a limpo.
 - Home em dois estados: sem API, só o botão "Conectar uma API de IA".
 
+## Rodada 10 — o conselho revisa a si mesmo, 26 melhorias (2026-07-09)
+- Os 12 conselheiros leram o **código real** do app e entregaram um backlog de
+  26 melhorias priorizadas; todas foram implementadas em 5 ondas de agentes
+  paralelos (arquivos disjuntos), com build + testes + Playwright entre elas.
+- **Confiança** (a Presidente: "é o que separa o app de premium"): demo
+  coerente (placar = veredito, sem `[DEMO]` na prosa, 1 dissenso persistente);
+  **checkpoint** da síntese (falha não descarta análises/debate já pagos);
+  `ErrorBoundary` com escape hatch; filtro **anti-segredo** no digest de código.
+- **Debate melhor**: dissenso estrutural no prompt base ([[Debate]]),
+  contexto enxuto na rodada 2+, frase-síntese citável por conselheiro, personas
+  com voz/vieses/postura de voto próprios ([[conselho/Início|conselho]]).
+- **Ativação**: home enxuta (progressive disclosure) + "Ver reunião de exemplo"
+  em 1 clique; medidor de **custo real** ("esta reunião custou ~US$X"); teto de
+  gasto; avisos de saída de dados; acessibilidade (aria-live, reduced-motion).
+- **Painel do Conselho**: analytics 100% local (M1/M2/M3, votos, custo) +
+  diagnóstico anônimo opt-in. **Rede de testes** (vitest) das funções de placar.
+- **Code-split**: SDKs sob `import()` dinâmico — bundle inicial 582 KB → 213 KB.
+
 ## Rodada 9 — pasta local (projeto não publicado) (2026-07-08)
 - **Pasta local**: além do repositório do GitHub, dá para escolher uma pasta do
   computador (projeto ainda não publicado). O navegador lê os arquivos ali mesmo

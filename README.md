@@ -42,6 +42,12 @@ Cada ideia apresentada vira um **projeto**, e o conselho trabalha nele **reuniã
 3. **Síntese** — a Presidente consolida: placar, consensos, divergências, riscos e um plano de ação para 7/30/90 dias.
 4. **Entregáveis** (opcionais) — 📄 o **plano detalhado** em documento visual com download em PDF (análise de mercado, SWOT, cronograma, orçamento com gráficos, riscos), e 🚀 o **prompt de execução** autossuficiente para colar num agente de programação. O conselho decide; quem executa é você — ou seu agente.
 
+No debate, cada conselheiro tem voz e vieses próprios e é incentivado a **discordar de forma produtiva** (não a concordar por conformismo). Se a síntese falhar por algum motivo, as análises e o debate **não se perdem** — dá para gerar a síntese de novo. Ao final, com uma API conectada, a sala mostra **quanto a reunião custou de verdade** (a partir dos tokens consumidos) e você pode **interromper** uma reunião em andamento.
+
+### Painel do Conselho — seus números, 100% locais
+
+A aba **Painel** mostra métricas das suas reuniões calculadas **só no seu navegador** (nada é enviado): taxa de conclusão, retenção dos projetos, distribuição de votos por conselheiro, quanto o debate muda votos, rodadas até o consenso e o custo acumulado. Há um botão para **copiar um diagnóstico anônimo** (só números, com pré-visualização) se você quiser compartilhar feedback — texto de ideias e vereditos nunca sai daqui.
+
 ### Treine cada conselheiro do seu jeito
 
 Clique em qualquer conselheiro para ver a análise completa e **avaliar as respostas com 👍/👎** (com comentário opcional). O feedback muda o comportamento **apenas daquele agente** nas próximas reuniões — os aprendizados ficam na aba *Configuração* da gaveta, onde também dá para **editar a persona** (system prompt) dele diretamente.
@@ -76,11 +82,11 @@ O provedor **Personalizado** conecta qualquer API compatível com o protocolo da
 
 ## Para usar
 
-1. Abra a app e vá em **Configurações**: escolha o provedor e cole sua chave de API. Recomendado: defina um **limite de gasto** na conta do provedor.
+1. Abra a app e vá em **Configurações**: escolha o provedor e cole sua chave de API. Recomendado: defina um **limite de gasto** na conta do provedor (e, no app, um **teto de gasto por reunião**).
 2. Escreva sua ideia, escolha os conselheiros, o modelo e as rodadas de debate.
 3. Clique em **Convocar o Conselho**.
 
-Sem chave, a app roda em **modo demonstração** (respostas simuladas, sem custo) para você conhecer a interface.
+Sem chave, a app roda em **modo demonstração** (respostas simuladas, sem custo) para você conhecer a interface — ou clique em **"Ver reunião de exemplo"** para o board decidir uma ideia curada em **um clique**, sem digitar nada. A demo é uma simulação honesta: o placar bate com o veredito e há divergência real na mesa (não uma unanimidade encenada).
 
 ### Custos aproximados por reunião (12 conselheiros, 1 rodada de debate, com Claude)
 
