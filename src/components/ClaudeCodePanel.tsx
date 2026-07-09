@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { usarFocusTrap } from '../lib/focusTrap'
 
 interface Props {
   prompt: string
@@ -10,12 +11,8 @@ interface Props {
 export function ClaudeCodePanel({ prompt, aoFechar }: Props) {
   const [copiado, setCopiado] = useState(false)
   const preRef = useRef<HTMLPreElement>(null)
-
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && aoFechar()
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [aoFechar])
+  // Gestão de foco unificada: prende o Tab, fecha no Esc e trava o scroll.
+  const modalRef = usarFocusTrap<HTMLDivElement>(true, aoFechar)
 
   const copiar = async () => {
     try {
@@ -36,6 +33,7 @@ export function ClaudeCodePanel({ prompt, aoFechar }: Props) {
   return (
     <div className="cc-overlay" onClick={aoFechar}>
       <div
+        ref={modalRef}
         className="cc-modal"
         role="dialog"
         aria-modal="true"

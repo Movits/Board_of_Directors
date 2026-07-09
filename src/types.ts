@@ -94,9 +94,15 @@ export interface AnaliseRodada1 {
   confianca: 1 | 2 | 3 | 4 | 5
 }
 
+/** Natureza de uma reação no debate: concordância, discordância ou complemento. */
+export type TipoReacao = 'concorda' | 'discorda' | 'complementa'
+
 export interface Reacao {
   para: string
   comentario: string
+  /** Natureza da reação (concorda/discorda/complementa). Opcional: reuniões
+   *  salvas antes do dissenso estrutural não têm o campo. */
+  tipo?: TipoReacao
 }
 
 export interface AnaliseDebate {
@@ -121,6 +127,9 @@ export interface ItemFeedback {
   /** Trecho curto da resposta avaliada, para dar contexto ao agente. */
   trecho: string
   origem: 'analise' | 'debate'
+  /** Seção específica avaliada (ex.: "análise", "estratégia 2", "risco 1",
+   *  "reação a Fulano"). Preenchida pela UI. Opcional: feedback antigo não tem. */
+  ancora?: string
 }
 
 export type Nivel = 'baixa' | 'media' | 'alta'

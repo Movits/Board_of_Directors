@@ -20,16 +20,20 @@ export function personaEfetiva(base: string, feedback: ItemFeedback[]): string {
     'FEEDBACK DO DONO DO CONSELHO sobre respostas SUAS em reuniões anteriores.',
     'Ajuste seu comportamento de acordo — isso vale só para você, não para os outros conselheiros.',
   ]
+  // A âncora diz QUAL parte foi avaliada (ex.: "estratégia 2", "risco 1",
+  // "reação a Fulano") — o agente sabe exatamente o que reforçar ou evitar.
+  const linhaFeedback = (f: ItemFeedback): string =>
+    `- "${f.trecho}"${f.ancora ? ` (sobre: ${f.ancora})` : ''}${f.comentario ? ` — comentário dele: ${f.comentario}` : ''}`
   if (positivos.length > 0) {
     linhas.push('', 'O que ele GOSTOU (continue fazendo assim):')
     for (const f of positivos) {
-      linhas.push(`- "${f.trecho}"${f.comentario ? ` — comentário dele: ${f.comentario}` : ''}`)
+      linhas.push(linhaFeedback(f))
     }
   }
   if (negativos.length > 0) {
     linhas.push('', 'O que ele NÃO GOSTOU (evite repetir):')
     for (const f of negativos) {
-      linhas.push(`- "${f.trecho}"${f.comentario ? ` — comentário dele: ${f.comentario}` : ''}`)
+      linhas.push(linhaFeedback(f))
     }
   }
   return linhas.join('\n')
@@ -90,7 +94,7 @@ O empreendedor traz a seguinte pauta para o conselho:
 ${extras.pauta}
 </pauta>
 
-Faça seu trabalho como conselheiro: avalie o progresso e a pauta pela ótica da sua especialidade, proponha os próximos passos concretos, aponte riscos novos ou persistentes e levante as perguntas críticas. Seu voto expressa sua avaliação da DIREÇÃO ATUAL do projeto (aprovar = seguir como está indo; ressalvas = seguir com correções; rejeitar = mudar de rumo).`
+Faça seu trabalho como conselheiro: avalie o progresso e a pauta pela ótica da sua especialidade, proponha os próximos passos concretos, aponte riscos novos ou persistentes e levante as perguntas críticas. Seu voto expressa sua avaliação da DIREÇÃO ATUAL do projeto (aprovar = seguir como está indo; ressalvas = seguir com correções; rejeitar = mudar de rumo). Capriche na justificativa do voto: uma única frase curta, memorável e citável (até ~20 palavras), na sua voz.`
   }
 
   return `O empreendedor apresentou a seguinte ideia ao conselho:
@@ -99,19 +103,38 @@ Faça seu trabalho como conselheiro: avalie o progresso e a pauta pela ótica da
 ${ideia}
 </ideia>
 ${blocos.length > 0 ? '\n' + blocos.join('\n\n') + '\n' : ''}
-Faça seu trabalho como conselheiro: analise a ideia a fundo pela ótica da sua especialidade, proponha estratégias concretas, aponte riscos, levante as perguntas críticas e dê seu voto preliminar.`
+Faça seu trabalho como conselheiro: analise a ideia a fundo pela ótica da sua especialidade, proponha estratégias concretas, aponte riscos, levante as perguntas críticas e dê seu voto preliminar. Capriche na justificativa do voto: uma única frase curta, memorável e citável (até ~20 palavras), na sua voz.`
 }
 
-function resumoPosicao(membro: Membro, r1: AnaliseRodada1, debates: AnaliseDebate[] | undefined): string {
+function resumoPosicao(
+  membro: Membro,
+  r1: AnaliseRodada1,
+  debates: AnaliseDebate[] | undefined,
+  rodada: number,
+): string {
   const ultimo = debates && debates.length > 0 ? debates[debates.length - 1] : undefined
   const voto = ultimo?.voto ?? r1.voto
   const justificativa = ultimo?.justificativa ?? r1.justificativa
   const linhas = [
     `### ${membro.nome} (${membro.cargo}) — voto: ${ROTULO_VOTO[voto]}`,
     `Justificativa: ${justificativa}`,
-    `Pontos principais: ${r1.estrategias.slice(0, 3).join(' | ')}`,
-    `Riscos apontados: ${r1.riscos.slice(0, 3).join(' | ')}`,
   ]
+  // CONTEXTO ENXUTO: na 1ª rodada os colegas ainda não debateram, então vale
+  // relistar estratégias e riscos da análise inicial. Da 2ª rodada em diante
+  // esse material já foi discutido à exaustão — repassá-lo todo turno só queima
+  // tokens; manda-se só o essencial (voto + justificativa + ponto de divergência
+  // + ressalvas), deixando o debate mais afiado e mais barato.
+  if (rodada <= 1) {
+    linhas.push(
+      `Pontos principais: ${r1.estrategias.slice(0, 3).join(' | ')}`,
+      `Riscos apontados: ${r1.riscos.slice(0, 3).join(' | ')}`,
+    )
+  } else {
+    const divergencia = ultimo?.reacoes.find((rea) => rea.tipo === 'discorda')
+    if (divergencia) {
+      linhas.push(`Ponto de divergência dele: com ${divergencia.para} — ${divergencia.comentario}`)
+    }
+  }
   const ressalvas = ultimo?.ressalvas_pendentes ?? []
   if (ultimo?.voto === 'aprovar_com_ressalvas' && ressalvas.length > 0) {
     linhas.push(`Ressalvas pendentes dele: ${ressalvas.join(' | ')}`)
@@ -141,7 +164,7 @@ export function promptDebate(
   const meuVotoAtual = meusDebates.length > 0 ? meusDebates[meusDebates.length - 1].voto : minhaAnalise.voto
   const posicoes = colegas
     .filter(({ estado }) => estado.rodada1)
-    .map(({ membro, estado }) => resumoPosicao(membro, estado.rodada1!, estado.debate))
+    .map(({ membro, estado }) => resumoPosicao(membro, estado.rodada1!, estado.debate, rodada))
     .join('\n\n')
 
   // Atenção: o início ("Rodada de debate nº N"), a linha "Seu voto atual é: X ("
@@ -158,7 +181,12 @@ Posições atuais dos demais conselheiros:
 
 ${posicoes}
 
-Agora debata: reaja às posições dos colegas com quem você mais concorda ou discorda (cite-os pelo nome), defenda ou ajuste sua posição e declare seu voto final desta rodada. Mudar de voto diante de bons argumentos é sinal de senioridade, não de fraqueza — mas não mude por mudar.${ateConsenso ? REGRAS_CONSENSO_PLENO : ''}`
+Agora debata de verdade — um conselho que só concorda não decide nada. Nesta rodada, é OBRIGATÓRIO:
+- Citar ao menos UM colega de quem você DISCORDA e por quê (nome + o ponto exato). Registre essa reação com tipo "discorda" — pelo menos uma por rodada. Se genuinamente não houver discordância, explique numa frase por quê.
+- Nomear o MAIOR risco que a mesa está subestimando — aquele que os colegas não estão levando a sério o bastante.
+- Completar, com honestidade, a frase: "se eu estiver errado, será porque…".
+
+Reaja às posições dos colegas citando-os pelo nome e classificando cada reação como "concorda", "discorda" ou "complementa"; defenda ou ajuste sua posição e declare seu voto final desta rodada. Mudar de voto diante de bons argumentos é sinal de senioridade, não de fraqueza — mas não mude por mudar.${ateConsenso ? REGRAS_CONSENSO_PLENO : ''}`
 }
 
 /** Situação do consenso pleno ao final do debate (só no modo "até consenso"). */

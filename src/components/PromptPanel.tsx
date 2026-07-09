@@ -64,7 +64,7 @@ export function PromptPanel({ prompt, streamando, erro, aoRegerar }: Props) {
             <strong>agente de programação</strong> preferido (Claude Code, Codex, Cursor…) para
             tirar o plano do papel.
           </p>
-          <pre className="prompt-texto" ref={preRef}>
+          <pre className="prompt-texto" ref={preRef} aria-live="polite" aria-busy={streamando}>
             {prompt}
             {streamando && <span className="cursor-piscando" aria-hidden />}
             <span ref={fimRef} />

@@ -57,6 +57,20 @@ button {
   border-radius: 4px;
 }
 
+/* Conteúdo só para leitores de tela (placar narrado, avisos aria-live) */
+.sr-apenas {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Os radios de modelo/debate são visualmente ocultos: o foco aparece no cartão */
 .opcao-modelo:focus-within,
 .opcao-debate:focus-within {
@@ -652,6 +666,66 @@ input:focus {
   color: var(--texto);
 }
 
+/* Resumo do conselho: 13 vozes agrupadas por voto, cada uma citável. */
+.resumo-conselho {
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--fundo-2);
+  padding: 12px 16px;
+}
+.resumo-conselho > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ouro-claro);
+}
+.resumo-grupo h4 {
+  margin: 12px 0 6px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-suave);
+}
+.resumo-grupo ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+.resumo-grupo em {
+  color: var(--texto-suave);
+}
+
+/* Cartão de conversão ao fim da demo: os dois caminhos com peso igual. */
+.cartao-conversao {
+  border: 1px solid var(--ouro);
+  border-radius: var(--raio);
+  background: rgba(201, 162, 39, 0.06);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+.cartao-conversao h3 {
+  margin: 0;
+}
+.cartao-conversao p {
+  margin: 0;
+  color: var(--texto-suave);
+}
+.cartao-conversao-botoes {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.cartao-conversao-botoes .botao-principal {
+  align-self: auto;
+}
+
 /* ── Rodar no Claude Code (par de botões + modal do briefing) ──────────── */
 
 .botoes-convocar {
@@ -890,6 +964,14 @@ input:focus {
 @media (max-width: 900px) {
   .sala-corpo {
     grid-template-columns: 1fr;
+  }
+  /* Empilhado: placar + veredito acima da grade de 13 cartões */
+  .painel-lateral {
+    order: -1;
+    position: static;
+  }
+  .grade-membros {
+    order: 0;
   }
 }
 
@@ -2270,5 +2352,44 @@ input:focus {
   .navegacao button {
     padding: 6px 10px;
     font-size: 0.85rem;
+  }
+}
+
+/* ── Acessibilidade: respeita quem prefere menos movimento ─────────────── */
+/* Com 13 cartões há muitas animações simultâneas (girar/pulsar/piscar).    */
+/* Aqui todas viram estado estático para não incomodar sensibilidade a      */
+/* movimento. Mantemos os indicadores visíveis, só sem loop.                */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Anel de "pensando": para de girar, mas continua como marca estática */
+  .anel-pensando {
+    animation: none;
+    transform: none;
+    opacity: 0.7;
+  }
+
+  /* Avatar "analisando": sem pulso; deixa um halo fixo como indicador */
+  .status-analisando .cartao-avatar {
+    animation: none;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor) 18%, transparent);
+  }
+
+  /* Cursor de digitação: para de piscar e fica sempre visível */
+  .cursor-piscando::after {
+    animation: none;
+    opacity: 1;
+  }
+
+  /* Gaveta lateral: sem deslize de entrada */
+  .gaveta {
+    animation: none;
   }
 }

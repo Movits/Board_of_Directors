@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
 import type { Nivel, Plano } from '../types'
+import { usarFocusTrap } from '../lib/focusTrap'
 
 const moeda = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -68,11 +68,8 @@ interface Props {
 }
 
 export function PlanDocument({ plano, demo, aoFechar }: Props) {
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && aoFechar()
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [aoFechar])
+  // Gestão de foco unificada: prende o Tab, fecha no Esc e trava o scroll.
+  const overlayRef = usarFocusTrap<HTMLDivElement>(true, aoFechar)
 
   const totalOrcamento = plano.orcamento.reduce((s, i) => s + i.valor_mensal_brl, 0)
   const totalSemanas = plano.roadmap.reduce((s, f) => s + f.duracao_semanas, 0)
@@ -80,6 +77,7 @@ export function PlanDocument({ plano, demo, aoFechar }: Props) {
 
   return (
     <div
+      ref={overlayRef}
       className="documento-overlay"
       role="dialog"
       aria-modal="true"

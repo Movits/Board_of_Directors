@@ -27,7 +27,7 @@ export function VerdictPanel({ veredito, streamando, reuniao }: Props) {
 
   return (
     <section className="veredito">
-      <div className="veredito-conteudo">
+      <div className="veredito-conteudo" aria-live="polite" aria-busy={streamando}>
         <Markdown texto={veredito} />
         {streamando && <span className="cursor-piscando" aria-hidden />}
         <div ref={fimRef} />

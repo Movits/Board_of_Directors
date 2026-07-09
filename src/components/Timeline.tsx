@@ -44,7 +44,11 @@ export function Timeline({ fase, rodadaDebate, totalDebates, ateConsenso, gerarP
   return (
     <ol className="linha-tempo" aria-label="Andamento da reunião">
       {etapas.map((etapa, i) => (
-        <li key={i} className={i < indice ? 'feita' : i === indice ? 'atual' : ''}>
+        <li
+          key={i}
+          className={i < indice ? 'feita' : i === indice ? 'atual' : ''}
+          aria-current={i === indice ? 'step' : undefined}
+        >
           <span className="etapa-numero">{i < indice ? '✓' : i + 1}</span>
           <span className="etapa-rotulo">{etapa.rotulo}</span>
           <span className="etapa-detalhe">{etapa.detalhe}</span>

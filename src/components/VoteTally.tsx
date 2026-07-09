@@ -34,6 +34,11 @@ export function VoteTally({ placar, total, votaram }: Props) {
           <span className="ponto ponto-rejeitar" /> Rejeitar <strong>{placar.rejeitar}</strong>
         </li>
       </ul>
+      {/* Região oculta que narra o placar a cada mudança para leitores de tela */}
+      <p className="sr-apenas" aria-live="polite">
+        Aprovar {placar.aprovar}, com ressalvas {placar.aprovar_com_ressalvas}, rejeitar{' '}
+        {placar.rejeitar}, de {total} votos
+      </p>
     </section>
   )
 }

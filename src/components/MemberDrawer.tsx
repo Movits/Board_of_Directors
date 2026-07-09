@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { EstadoMembro, ItemFeedback, Membro } from '../types'
 import { ROTULO_VOTO } from '../board/prompts'
 import { gravaFeedback, leFeedback, removeFeedback } from '../lib/storage'
+import { usarFocusTrap } from '../lib/focusTrap'
 import { PersonaForm } from './PersonaForm'
 
 // ── Avaliação de uma resposta (👍/👎 + comentário opcional) ─────────────────
@@ -10,9 +11,11 @@ interface FeedbackProps {
   membroId: string
   origem: ItemFeedback['origem']
   texto: string
+  /** Seção avaliada (ex.: "análise", "debate rodada 2"), gravada na âncora. */
+  ancora: string
 }
 
-function FeedbackResposta({ membroId, origem, texto }: FeedbackProps) {
+function FeedbackResposta({ membroId, origem, texto, ancora }: FeedbackProps) {
   const [escolha, setEscolha] = useState<boolean | null>(null)
   const [comentario, setComentario] = useState('')
   const [salvo, setSalvo] = useState<boolean | null>(null)
@@ -63,6 +66,7 @@ function FeedbackResposta({ membroId, origem, texto }: FeedbackProps) {
                 comentario: comentario.trim() || undefined,
                 trecho: texto.replace(/\s+/g, ' ').slice(0, 200),
                 origem,
+                ancora,
               })
               setSalvo(escolha)
             }}
@@ -88,12 +92,8 @@ interface Props {
 export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
   const [aba, setAba] = useState<'reuniao' | 'config'>('reuniao')
   const [feedbacks, setFeedbacks] = useState<ItemFeedback[]>(() => leFeedback(membro.id))
-
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && aoFechar()
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [aoFechar])
+  // Gestão de foco unificada: prende o Tab, fecha no Esc e trava o scroll.
+  const gavetaRef = usarFocusTrap<HTMLElement>(true, aoFechar)
 
   const r1 = estado.rodada1
   const atualizaFeedbacks = () => setFeedbacks(leFeedback(membro.id))
@@ -101,6 +101,7 @@ export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
   return (
     <div className="gaveta-fundo" onClick={aoFechar}>
       <aside
+        ref={gavetaRef}
         className="gaveta"
         role="dialog"
         aria-modal="true"
@@ -187,6 +188,7 @@ export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
                   <FeedbackResposta
                     membroId={membro.id}
                     origem="analise"
+                    ancora="análise"
                     texto={`[Análise] ${r1.analise} | Estratégias: ${r1.estrategias.join('; ')}`}
                   />
                 )}
@@ -220,6 +222,7 @@ export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
                       <FeedbackResposta
                         membroId={membro.id}
                         origem="debate"
+                        ancora={`debate rodada ${i + 1}`}
                         texto={`[Debate ${i + 1}] ${d.reacoes.map((r) => `para ${r.para}: ${r.comentario}`).join(' | ')} | ${d.justificativa}`}
                       />
                     )}

@@ -53,6 +53,24 @@ export function MemberCard({ membro, estado, presidente, aoClicar }: Props) {
           {presidente && estado.status === 'analisando' ? 'Sintetizando…' : ROTULO_STATUS[estado.status]}
         </span>
       )}
+      {estado.rodada1?.justificativa && (
+        <span
+          className="cartao-justificativa"
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            marginTop: '0.4rem',
+            fontStyle: 'italic',
+            fontSize: '0.78em',
+            lineHeight: 1.3,
+            opacity: 0.72,
+          }}
+        >
+          “{estado.rodada1.justificativa}”
+        </span>
+      )}
     </button>
   )
 }

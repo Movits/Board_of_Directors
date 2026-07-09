@@ -8,11 +8,12 @@ import {
   gerarPromptExecucao,
   gerarSintese,
   votoDoConsenso,
+  votoFinalDe,
   MAX_RODADAS_CONSENSO,
   type ContextoEntregavel,
   type ContextoSintese,
 } from '../board/orchestrator'
-import { personaEfetiva } from '../board/prompts'
+import { personaEfetiva, ROTULO_VOTO } from '../board/prompts'
 import { criaTransporte } from '../api'
 import { custoUsd, formataUsd } from '../api/precos'
 import { criaTransporteDemo } from '../board/demo'
@@ -33,7 +34,9 @@ import { VoteTally } from './VoteTally'
 import { VerdictPanel } from './VerdictPanel'
 import { PromptPanel } from './PromptPanel'
 import { PlanDocument } from './PlanDocument'
+import { ClaudeCodePanel } from './ClaudeCodePanel'
 import { Timeline } from './Timeline'
+import { promptParaClaudeCode } from '../board/claudeCode'
 
 /** Prompt efetivo de cada membro: override do usuário (ou padrão) + feedback
  *  local daquele agente — avaliações 👍/👎 só afetam o próprio conselheiro. */
@@ -51,6 +54,8 @@ interface Props {
   existente?: Reuniao
   aoNovaReuniao: () => void
   aoVerProjeto?: (projetoId: string) => void
+  /** Abre as Configurações (para conectar uma API) — usado no CTA pós-demo. */
+  aoAbrirConfiguracoes?: () => void
 }
 
 /** Resumo da reunião anterior do projeto — contexto para acompanhamentos. */
@@ -121,10 +126,17 @@ function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
   }
 }
 
-export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: Props) {
+export function MeetingRoom({
+  config,
+  existente,
+  aoNovaReuniao,
+  aoVerProjeto,
+  aoAbrirConfiguracoes,
+}: Props) {
   const [estado, setEstado] = useState<EstadoUI>(() => estadoInicial(config, existente))
   const [membroAberto, setMembroAberto] = useState<string | null>(null)
   const [planoAberto, setPlanoAberto] = useState(false)
+  const [briefingCC, setBriefingCC] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const iniciadaRef = useRef(false)
 
@@ -366,6 +378,26 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
   const custo = uso ? custoUsd(config.modelo, uso) : undefined
   const custoDaReuniao = !config.demo && custo !== undefined ? formataUsd(custo) : undefined
 
+  // Resumo do conselho: 13 vozes agrupadas por voto, cada uma com a frase citável.
+  const resumoPorVoto: Record<Voto, { nome: string; emoji: string; frase: string }[]> = {
+    aprovar: [],
+    aprovar_com_ressalvas: [],
+    rejeitar: [],
+  }
+  for (const m of participantes) {
+    const est = estado.membros[m.id]
+    if (!est?.rodada1) continue
+    const voto = votoFinalDe(est)
+    if (!voto) continue
+    const ultimo = est.debate && est.debate.length > 0 ? est.debate[est.debate.length - 1] : undefined
+    resumoPorVoto[voto].push({
+      nome: m.nome,
+      emoji: m.emoji,
+      frase: ultimo?.justificativa ?? est.rodada1.justificativa,
+    })
+  }
+  const temResumo = Object.values(resumoPorVoto).some((g) => g.length > 0)
+
   return (
     <div className="sala">
       <div className="sala-topo">
@@ -504,6 +536,27 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
               reuniao={estado.reuniao}
             />
           )}
+          {estado.fase === 'concluida' && temResumo && (
+            <details className="resumo-conselho">
+              <summary>🗳️ Resumo do conselho — cada voz em uma frase</summary>
+              {(['aprovar', 'aprovar_com_ressalvas', 'rejeitar'] as Voto[]).map((v) =>
+                resumoPorVoto[v].length > 0 ? (
+                  <div key={v} className="resumo-grupo">
+                    <h4>
+                      {ROTULO_VOTO[v]} ({resumoPorVoto[v].length})
+                    </h4>
+                    <ul>
+                      {resumoPorVoto[v].map((x, i) => (
+                        <li key={i}>
+                          {x.emoji} <strong>{x.nome}</strong>: <em>“{x.frase}”</em>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null,
+              )}
+            </details>
+          )}
           {(estado.plano || estado.fase === 'plano' || estado.erroPlano) && (
             <section className="painel-plano">
               <h3>📄 Plano detalhado</h3>
@@ -544,20 +597,69 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
             erro={estado.erroPrompt}
             aoRegerar={() => regerarEntregavel('prompt')}
           />
-          {!emAndamento && (
-            <div className="sala-acoes-finais">
-              {config.projetoId && aoVerProjeto && (
+          {!emAndamento && config.demo && (
+            // CTA de conversão: o fim da demo é o momento de maior intenção.
+            // Os dois caminhos (pago e grátis) têm peso IGUAL.
+            <div className="cartao-conversao">
+              <h3>Isto foi uma simulação 🎭</h3>
+              <p>
+                Os votos acima são ilustrativos. Quer a análise <strong>real</strong> do seu
+                conselho, com os 13 conselheiros de verdade?
+              </p>
+              <div className="cartao-conversao-botoes">
+                {aoAbrirConfiguracoes && (
+                  <button className="botao-principal" onClick={aoAbrirConfiguracoes}>
+                    🔌 Conectar API e rodar de verdade
+                  </button>
+                )}
                 <button
                   className="botao-principal"
-                  onClick={() => aoVerProjeto(config.projetoId!)}
-                  title="Continuar trabalhando neste projeto com a equipe"
+                  onClick={() =>
+                    setBriefingCC(
+                      promptParaClaudeCode({
+                        ideia: config.ideia,
+                        anexos,
+                        repoResumo: projeto?.repo?.resumo,
+                        repoUrl: projeto?.repo?.url,
+                        pastaLocal: projeto?.pastaLocal,
+                        rodadasDebate: config.rodadasDebate,
+                        ateConsenso: config.ateConsenso,
+                      }),
+                    )
+                  }
                 >
-                  📁 Ver projeto
+                  🖥 Rodar no Claude Code — grátis no seu plano
+                </button>
+              </div>
+              <button className="link link-sutil" onClick={aoNovaReuniao}>
+                ✨ Nova simulação
+              </button>
+            </div>
+          )}
+          {!emAndamento && !config.demo && (
+            <div className="sala-acoes-finais">
+              {config.projetoId && aoVerProjeto ? (
+                <>
+                  <button
+                    className="botao-principal"
+                    onClick={() => aoVerProjeto(config.projetoId!)}
+                    title="Continuar trabalhando neste projeto com a equipe"
+                  >
+                    📁 Continuar este projeto com a equipe
+                  </button>
+                  <p className="campo-dica">
+                    Este pitch já é um <strong>projeto</strong> — a equipe continua com você reunião
+                    após reunião. Volte quando algo mudar e traga a pauta.
+                  </p>
+                  <button className="link link-sutil" onClick={aoNovaReuniao}>
+                    ✨ Nova reunião (outro projeto)
+                  </button>
+                </>
+              ) : (
+                <button className="botao-principal" onClick={aoNovaReuniao}>
+                  ✨ Nova reunião
                 </button>
               )}
-              <button className="botao-principal" onClick={aoNovaReuniao}>
-                ✨ Nova reunião
-              </button>
             </div>
           )}
         </aside>
@@ -575,6 +677,8 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
       {planoAberto && estado.plano && (
         <PlanDocument plano={estado.plano} demo={config.demo} aoFechar={() => setPlanoAberto(false)} />
       )}
+
+      {briefingCC && <ClaudeCodePanel prompt={briefingCC} aoFechar={() => setBriefingCC(null)} />}
     </div>
   )
 }

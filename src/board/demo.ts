@@ -1,4 +1,4 @@
-import type { AnaliseDebate, AnaliseRodada1, Plano, Transporte, Voto } from '../types'
+import type { AnaliseDebate, AnaliseRodada1, Plano, TipoReacao, Transporte, Voto } from '../types'
 import { MEMBROS } from './members'
 
 // Modo demonstração: simula as respostas do conselho sem chamar a API.
@@ -301,6 +301,15 @@ const COMENTARIOS_POR_MEMBRO: Record<string, ((n: string) => string)[]> = {
 
 const comentariosDe = (membroId: string) => COMENTARIOS_POR_MEMBRO[membroId] ?? COMENTARIOS_DEBATE
 
+/** Tipo da reação na demo: o cético (CFO Ricardo) sempre DISCORDA — é o
+ *  dissenso persistente da mesa e garante ao menos uma discordância por rodada.
+ *  Os demais, em maioria, complementam ou concordam, com discórdia eventual. */
+function tipoReacaoDemo(perfil: PerfilDemo, g: () => number): TipoReacao {
+  if (perfil === 'cetico') return 'discorda'
+  const opcoes: TipoReacao[] = ['complementa', 'complementa', 'concorda', 'concorda', 'discorda']
+  return sorteia(g, opcoes)
+}
+
 /** Condições que os conselheiros "com ressalvas" declaram no modo consenso. */
 const RESSALVAS_DEMO = [
   'Validar a demanda com lista de espera (≥ 100 inscritos) antes de investir em produto',
@@ -390,7 +399,10 @@ export function criaTransporteDemo(): Transporte {
       const mudou = voto !== votoAtual
 
       const r: AnaliseDebate = {
-        reacoes: alvos.map((n) => ({ para: n, comentario: sorteia(g, comentariosDe(membroId))(n) })),
+        reacoes: alvos.map((n) => {
+          const comentario = sorteia(g, comentariosDe(membroId))(n)
+          return { para: n, tipo: tipoReacaoDemo(perfil, g), comentario }
+        }),
         mudou_voto: mudou,
         voto,
         justificativa: mudou

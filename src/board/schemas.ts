@@ -31,7 +31,8 @@ export const SCHEMA_RODADA1 = {
     },
     justificativa: {
       type: 'string',
-      description: 'Justificativa do voto em 1 a 3 frases.',
+      description:
+        'UMA frase curta, memorável e citável (até ~20 palavras) que resume sua posição, no seu próprio registro de fala.',
     },
     confianca: {
       type: 'integer',
@@ -190,9 +191,15 @@ export const SCHEMA_DEBATE = {
         type: 'object',
         properties: {
           para: { type: 'string', description: 'Nome do conselheiro a quem você responde.' },
+          tipo: {
+            type: 'string',
+            enum: ['concorda', 'discorda', 'complementa'],
+            description:
+              'Natureza da reação: se você "concorda", "discorda" ou "complementa" o colega. Ao menos UMA reação do tipo "discorda" por rodada (ou explique na justificativa por que genuinamente não há discordância).',
+          },
           comentario: { type: 'string', description: 'Sua réplica ou complemento, direto e específico.' },
         },
-        required: ['para', 'comentario'],
+        required: ['para', 'tipo', 'comentario'],
         additionalProperties: false,
       },
     },

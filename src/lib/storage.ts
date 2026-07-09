@@ -18,7 +18,10 @@ const CHAVES = {
 } as const
 
 const MAX_HISTORICO = 20
-const MAX_FEEDBACK_POR_MEMBRO = 10
+/** Caps INDEPENDENTES por sinal: guardamos os últimos 6 positivos E os últimos
+ *  6 negativos separadamente, para que uma rajada de 👍 não evacue os 👎 (o
+ *  sinal mais valioso para o agente aprender o que evitar). */
+const MAX_FEEDBACK_POR_SINAL = 6
 
 // Sonnet como padrão: equilíbrio custo/qualidade protege quem está começando
 // (recomendação do conselho — Opus vira upgrade consciente).
@@ -141,7 +144,13 @@ export function leFeedback(membroId: string): ItemFeedback[] {
 
 export function gravaFeedback(membroId: string, item: ItemFeedback): void {
   const mapa = le<MapaFeedback>(CHAVES.feedback, {})
-  mapa[membroId] = [item, ...(mapa[membroId] ?? [])].slice(0, MAX_FEEDBACK_POR_MEMBRO)
+  // Fecha o loop de feedback com caps por sinal: os itens já vêm em ordem por
+  // data desc (sempre gravamos no topo), então basta filtrar por sinal, cortar
+  // os 6 mais recentes de cada e recombinar preservando a ordem por data desc.
+  const todos = [item, ...(mapa[membroId] ?? [])]
+  const positivos = todos.filter((f) => f.gostou).slice(0, MAX_FEEDBACK_POR_SINAL)
+  const negativos = todos.filter((f) => !f.gostou).slice(0, MAX_FEEDBACK_POR_SINAL)
+  mapa[membroId] = [...positivos, ...negativos].sort((a, b) => b.data.localeCompare(a.data))
   grava(CHAVES.feedback, mapa)
 }
 
