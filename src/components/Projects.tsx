@@ -21,9 +21,9 @@ export function Projects({ aoAbrirProjeto, aoNovoProjeto }: Props) {
       <div className="tela-historico">
         <h1>Projetos</h1>
         <p className="historico-vazio">
-          Nenhum projeto ainda. Apresente uma ideia ao conselho — cada ideia vira um projeto, e
-          você pode voltar aqui para continuar trabalhando nele com a equipe: novas reuniões,
-          feedback constante, como uma mini empresa.
+          Nenhum projeto ainda. Apresente uma ideia ao conselho: cada ideia vira um projeto, e
+          você pode voltar aqui para continuar trabalhando nele com a equipe (novas reuniões,
+          feedback constante), como uma mini empresa.
         </p>
         <button className="botao-principal" onClick={aoNovoProjeto}>
           🔔 Apresentar uma ideia

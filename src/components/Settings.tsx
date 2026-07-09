@@ -77,8 +77,8 @@ export function Settings() {
 
   const apagarTudo = () => {
     const confirmado = window.confirm(
-      'Apagar TODOS os dados deste app neste navegador — projetos, reuniões, feedback, ' +
-        'personas e chaves de API? Esta ação não pode ser desfeita.',
+      'Apagar TODOS os dados deste app neste navegador (projetos, reuniões, feedback, ' +
+        'personas e chaves de API)? Esta ação não pode ser desfeita.',
     )
     if (!confirmado) return
     limpaTudo()
@@ -114,8 +114,9 @@ export function Settings() {
       <section className="cartao-config">
         <h2>🤖 Provedor de IA</h2>
         <p>
-          Escolha de qual API vêm os conselheiros — incluindo APIs locais como o Ollama. Os modelos
-          disponíveis na tela inicial mudam conforme o provedor.
+          Escolha de qual API vêm os conselheiros, incluindo APIs no seu próprio computador, como o
+          Ollama. Os modelos disponíveis na tela inicial mudam conforme o provedor (a empresa que
+          roda a IA).
         </p>
         <div className="opcoes-modelo">
           {PROVEDORES.map((p) => (
@@ -134,20 +135,19 @@ export function Settings() {
       </section>
 
       <section className="cartao-config">
-        <h2>🔑 Conexão — {info.rotulo}</h2>
+        <h2>🔑 Conexão · {info.rotulo}</h2>
         {provedor === 'anthropic' && (
           <div className="aviso aviso-atencao">
-            <strong>Assinatura ≠ API.</strong> A API da Anthropic usa <em>créditos próprios</em>,
-            comprados em console.anthropic.com — ela é <strong>separada</strong> da assinatura do
-            claude.ai (Pro/Max) e <strong>não consome o limite do seu plano</strong>. Dica: compre
-            um valor pequeno (ex.: US$5), defina um limite de gasto e use Sonnet ou Haiku — rende
-            dezenas de reuniões.
+            <strong>Plano do chat de IA ≠ chave de API.</strong> A chave de API é um caminho à parte
+            e pago: usa <em>créditos próprios</em>, comprados em console.anthropic.com, que{' '}
+            <strong>não saem do seu plano do Claude</strong> (Pro/Max). Dica: compre um valor pequeno
+            (ex.: US$5), defina um limite de gasto e use Sonnet ou Haiku. Rende dezenas de reuniões.
             <br />
             <br />
-            <strong>Quer usar o seu plano Pro/Max sem gastar API?</strong> Use o botão{' '}
-            <strong>🖥 Rodar no Claude Code</strong> na tela inicial: o conselho roda dentro do
-            Claude Code, no seu plano. (A Anthropic não permite apps de terceiros usarem a
-            autenticação da assinatura direto — por isso o caminho é rodar no próprio Claude Code.)
+            <strong>Quer usar o plano que você já paga, sem custo extra?</strong> Use o botão{' '}
+            <strong>🖥 Rodar de graça no seu chat de IA</strong> na tela inicial: o app gera um
+            prompt para você colar no seu chat (ChatGPT, Claude, Gemini e outros) e o conselho roda
+            ali, no plano que você já usa.
           </div>
         )}
         {info.urlChave ? (
@@ -179,7 +179,7 @@ export function Settings() {
                     key={p.rotulo}
                     type="button"
                     className={`chip ${baseUrl === p.url ? 'chip-ativo' : ''}`}
-                    title={p.dica ? `${p.url} — ${p.dica}` : p.url}
+                    title={p.dica ? `${p.url} · ${p.dica}` : p.url}
                     onClick={() => setBaseUrl(p.url)}
                   >
                     {p.rotulo}
@@ -214,7 +214,7 @@ export function Settings() {
               A API precisa aceitar chamadas do navegador (CORS). Para <strong>Ollama local</strong>
               : inicie com <code>OLLAMA_ORIGINS='https://movits.github.io' ollama serve</code> e use{' '}
               <code>http://localhost:11434/v1</code> (o curinga <code>'*'</code> funciona, mas
-              libera para qualquer site — use só em testes).
+              libera para qualquer site; use só em testes).
             </span>
           </label>
         )}
@@ -249,14 +249,14 @@ export function Settings() {
 
         <div className="aviso aviso-atencao">
           <strong>Sobre segurança:</strong> as chaves ficam salvas apenas no <em>localStorage</em>{' '}
-          deste navegador e são enviadas diretamente à API do provedor — nunca a outros servidores.
+          deste navegador e são enviadas diretamente à API do provedor, nunca a outros servidores.
           Ainda assim, não use este site em computadores compartilhados e prefira chaves dedicadas
           com limite de gasto.
         </div>
       </section>
 
       <section className="cartao-config">
-        <h2>🧠 Modelo padrão — {info.rotulo}</h2>
+        <h2>🧠 Modelo padrão · {info.rotulo}</h2>
         {info.modelos.length > 0 && (
           <div className="opcoes-modelo">
             {info.modelos.map((m) => (
@@ -331,7 +331,7 @@ export function Settings() {
           </div>
         )}
         <p className="campo-dica">
-          O modelo padrão selecionado aqui aparece na tela inicial — onde também dá para trocar por
+          O modelo padrão selecionado aqui aparece na tela inicial, onde também dá para trocar por
           reunião.
         </p>
       </section>
@@ -340,9 +340,9 @@ export function Settings() {
         <h2>💰 Teto de gasto por reunião</h2>
         <p>
           Um limite de custo estimado por reunião. Quando a estimativa <strong>máxima</strong> de
-          uma reunião paga passar deste valor, o app pede uma confirmação antes de convocar — nunca
-          bloqueia. Ajuda sobretudo no modo <strong>🤝 até consenso</strong>, que pode render várias
-          rodadas e encarecer a conta.
+          uma reunião paga passar deste valor, o app pede uma confirmação antes de convocar. Ele
+          nunca bloqueia. Ajuda sobretudo no modo <strong>🤝 até consenso</strong>, que pode render
+          várias rodadas e encarecer a conta.
         </p>
         <label className="campo campo-base-url">
           <span className="campo-rotulo">Teto de gasto por reunião (US$)</span>
@@ -363,8 +363,8 @@ export function Settings() {
           </div>
           <span className="campo-dica">
             A confirmação só aparece em reuniões <strong>pagas</strong> (com API conectada). O modo
-            demonstração e o <strong>🖥 Rodar no Claude Code</strong> são sempre gratuitos e não
-            contam. Padrão: US$ 5,00.
+            de teste e o <strong>🖥 Rodar de graça no seu chat de IA</strong> são sempre gratuitos e
+            não contam. Padrão: US$ 5,00.
           </span>
         </label>
       </section>
@@ -372,8 +372,9 @@ export function Settings() {
       <section className="cartao-config">
         <h2>🎭 Personas dos conselheiros</h2>
         <p>
-          Cada conselheiro é definido por um <em>system prompt</em>. Edite para ajustar o tom, o
-          foco ou a expertise de cada um — as mudanças valem para as próximas reuniões.
+          Cada conselheiro é definido por um <em>system prompt</em> (o texto que define o papel
+          dele). Edite para ajustar o tom, o foco ou a especialidade de cada um. As mudanças valem
+          para as próximas reuniões.
         </p>
         <ul className="lista-personas">
           {MEMBROS.map((m) => {
@@ -413,7 +414,7 @@ export function Settings() {
       <section className="cartao-config">
         <h2>🧹 Dados deste navegador</h2>
         <p>
-          Tudo que o app guarda — chaves, projetos, reuniões, feedback e personas — fica apenas no{' '}
+          Tudo que o app guarda (chaves, projetos, reuniões, feedback e personas) fica apenas no{' '}
           <em>localStorage</em> deste navegador. Use os botões abaixo para limpar antes de sair de
           um computador compartilhado.
         </p>
@@ -422,7 +423,7 @@ export function Settings() {
           <button onClick={apagarTudo}>Apagar TODOS os dados deste navegador</button>
         </div>
         <span className="campo-dica">
-          O segundo botão apaga também projetos e reuniões — irreversível. A tela recarrega em
+          O segundo botão apaga também projetos e reuniões, e é irreversível. A tela recarrega em
           seguida.
         </span>
       </section>

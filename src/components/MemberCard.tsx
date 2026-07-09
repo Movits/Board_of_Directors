@@ -45,7 +45,7 @@ export function MemberCard({ membro, estado, presidente, aoClicar }: Props) {
           {VOTO_CURTO[voto].rotulo}
           {mudouVoto && <span title="Mudou de voto durante o debate"> 🔄</span>}
           {falhouDebate && (
-            <span title="Uma chamada falhou durante o debate — manteve a posição anterior"> ⚠</span>
+            <span title="Uma chamada falhou durante o debate; manteve a posição anterior"> ⚠</span>
           )}
         </span>
       ) : (

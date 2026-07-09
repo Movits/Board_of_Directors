@@ -423,7 +423,7 @@ export function MeetingRoom({
         <div className="sala-ideia">
           <span className="sala-ideia-rotulo">
             {config.demo && <span className="selo-demo">DEMO</span>}{' '}
-            {config.pauta ? 'Acompanhamento — pauta da reunião' : 'Ideia em análise'}
+            {config.pauta ? 'Acompanhamento: pauta da reunião' : 'Ideia em análise'}
           </span>
           <p>{config.pauta ?? config.ideia}</p>
           {config.pauta && projeto && <small className="sala-projeto-nome">Projeto: {projeto.nome}</small>}
@@ -462,7 +462,7 @@ export function MeetingRoom({
 
       {estado.falhouSalvar && (
         <div className="aviso aviso-erro">
-          <strong>Não foi possível salvar esta reunião</strong> — o armazenamento do navegador está
+          <strong>Não foi possível salvar esta reunião</strong>: o armazenamento do navegador está
           cheio. Ela <em>não</em> ficará no histórico do projeto. Use os botões de exportar no
           veredito (Markdown, JSON ou Obsidian) para guardar o resultado agora, e depois exclua
           projetos ou anexos antigos para liberar espaço.
@@ -475,8 +475,8 @@ export function MeetingRoom({
             🤝 <strong>Consenso pleno alcançado!</strong> Todos os conselheiros votaram{' '}
             <strong>Aprovar</strong>
             {estado.consensoNaRodada === 0
-              ? ' já nas análises iniciais — não houve necessidade de debate.'
-              : ` — as ressalvas foram debatidas e resolvidas em ${estado.consensoNaRodada} rodada${estado.consensoNaRodada > 1 ? 's' : ''} de debate.`}
+              ? ' já nas análises iniciais, sem precisar de debate.'
+              : `. As ressalvas foram debatidas e resolvidas em ${estado.consensoNaRodada} rodada${estado.consensoNaRodada > 1 ? 's' : ''} de debate.`}
           </div>
         ) : estado.consensoVoto === 'rejeitar' ? (
           <div className="aviso aviso-consenso-rejeicao">
@@ -503,7 +503,7 @@ export function MeetingRoom({
         ['sintese', 'plano', 'prompt', 'concluida'].includes(estado.fase) && (
           <div className="aviso aviso-sem-consenso">
             ⚖️ <strong>Consenso pleno não alcançado</strong> após {MAX_RODADAS_CONSENSO} rodadas de
-            debate — ressalvas e divergências permanecem. A síntese da Presidente mapeia o que
+            debate. Ressalvas e divergências permanecem. A síntese da Presidente mapeia o que
             destravaria cada uma.
           </div>
         )}
@@ -537,7 +537,7 @@ export function MeetingRoom({
               <h3>📋 Síntese da Presidente</h3>
               <p className="painel-plano-nota painel-erro-nota">
                 ⚠️ A síntese falhou ({estado.erroSintese}). As análises e o debate dos conselheiros
-                foram <strong>salvos</strong> — nada do que você pagou se perdeu. Gere a síntese
+                foram <strong>salvos</strong>: nada do que você pagou se perdeu. Gere a síntese
                 novamente para concluir o veredito e os entregáveis.
               </p>
               <button
@@ -557,7 +557,7 @@ export function MeetingRoom({
           )}
           {estado.fase === 'concluida' && temResumo && (
             <details className="resumo-conselho">
-              <summary>🗳️ Resumo do conselho — cada voz em uma frase</summary>
+              <summary>🗳️ Resumo do conselho: cada voz em uma frase</summary>
               {(['aprovar', 'aprovar_com_ressalvas', 'rejeitar'] as Voto[]).map((v) =>
                 resumoPorVoto[v].length > 0 ? (
                   <div key={v} className="resumo-grupo">
@@ -597,7 +597,7 @@ export function MeetingRoom({
                 <>
                   <p className="painel-plano-nota">
                     Documento completo com análise de mercado, SWOT, cronograma, orçamento e
-                    riscos — para você avaliar antes de executar.
+                    riscos, para você avaliar antes de executar.
                   </p>
                   <button className="botao-principal botao-compacto" onClick={() => setPlanoAberto(true)}>
                     Ver plano completo
@@ -647,7 +647,7 @@ export function MeetingRoom({
                     )
                   }
                 >
-                  🖥 Rodar no Claude Code — grátis no seu plano
+                  🖥 Rodar de graça no seu chat de IA
                 </button>
               </div>
               <button className="link link-sutil" onClick={aoNovaReuniao}>
@@ -667,7 +667,7 @@ export function MeetingRoom({
                     📁 Continuar este projeto com a equipe
                   </button>
                   <p className="campo-dica">
-                    Este pitch já é um <strong>projeto</strong> — a equipe continua com você reunião
+                    Esta ideia já é um <strong>projeto</strong>: a equipe continua com você reunião
                     após reunião. Volte quando algo mudar e traga a pauta.
                   </p>
                   <button className="link link-sutil" onClick={aoNovaReuniao}>

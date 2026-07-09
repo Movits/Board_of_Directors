@@ -48,7 +48,8 @@ function AvisoEgresso({ provedor }: { provedor: Provedor }) {
   const link = LINKS_USO_DADOS[provedor]
   return (
     <span className="campo-dica aviso-egresso">
-      🔒 O conteúdo sai do seu navegador direto para o provedor de IA na análise —{' '}
+      🔒 Na análise, o conteúdo sai do seu navegador direto para o provedor de IA (a empresa que
+      roda a IA):{' '}
       {link.url ? (
         <a href={link.url} target="_blank" rel="noreferrer">
           {link.rotulo}
@@ -56,7 +57,8 @@ function AvisoEgresso({ provedor }: { provedor: Provedor }) {
       ) : (
         link.rotulo
       )}
-      . Com <strong>Rodar no Claude Code</strong>, nem isso — fica tudo local.
+      . Com <strong>Rodar de graça no seu chat de IA</strong>, nem isso: fica tudo no seu
+      computador.
     </span>
   )
 }
@@ -154,7 +156,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
         const anexo = await processaArquivo(arquivo)
         if (tamanhoTotal(novos) + anexo.tamanho > MAX_TOTAL_BYTES) {
           setErroAnexo(
-            `Limite total de ${formataTamanho(MAX_TOTAL_BYTES)} em anexos atingido — "${arquivo.name}" ficou de fora.`,
+            `Limite total de ${formataTamanho(MAX_TOTAL_BYTES)} em anexos atingido: "${arquivo.name}" ficou de fora.`,
           )
           break
         }
@@ -206,7 +208,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
     : faltaMembros
       ? 'Selecione ao menos 2 conselheiros.'
       : faltaModelo
-        ? 'Digite o ID do modelo personalizado — ou escolha um da lista.'
+        ? 'Digite o ID do modelo personalizado, ou escolha um da lista.'
         : pdfSemSuporte
           ? 'PDF anexado: só o provedor Claude (Anthropic) lê PDFs. Troque o provedor, remova o PDF ou envie as páginas como imagens.'
           : null
@@ -217,7 +219,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
   const anexosPesados = anexos.filter((a) => a.tipo !== 'texto').length
   const notaAnexos =
     !demo && anexosPesados > 0
-      ? ` Cada imagem/PDF vai para os ${selecionados.size} conselheiros em CADA rodada — é o que mais encarece.`
+      ? ` Cada imagem/PDF vai para os ${selecionados.size} conselheiros em CADA rodada, e é o que mais encarece.`
       : ''
   // Faixa em US$ (passiva — nunca um gate): só no caminho pago e com modelo de
   // preço conhecido. Modelo custom/local sem preço mostra só a contagem.
@@ -232,9 +234,9 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
     return f ? ` · ${formataFaixaUsd(f)}` : ''
   })()
   const estimativa = demo
-    ? 'Modo demonstração: nenhuma chamada de IA será feita — tudo é simulado, sem custo.'
+    ? 'Modo de teste: nenhuma chamada de IA será feita. Tudo é de exemplo, sem custo.'
     : modoDebate === 'consenso'
-      ? `≈ entre ${chamadas(0)} e ${chamadas(5)} chamadas de IA${faixaUsdTexto} — o consenso pode vir logo ou levar até 5 rodadas.${notaAnexos}`
+      ? `≈ entre ${chamadas(0)} e ${chamadas(5)} chamadas de IA${faixaUsdTexto}. O consenso pode vir logo ou levar até 5 rodadas.${notaAnexos}`
       : `≈ ${chamadas(Number(modoDebate))} chamadas de IA${faixaUsdTexto}.${notaAnexos}`
 
   const executaConvocacao = (ideiaEfetiva: string, demoEfetivo: boolean) => {
@@ -253,7 +255,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
     })
     if (!gravado) {
       setErroAnexo(
-        'O armazenamento do navegador está cheio — remova anexos ou exclua projetos antigos e tente de novo.',
+        'O armazenamento do navegador está cheio: remova anexos ou exclua projetos antigos e tente de novo.',
       )
       return
     }
@@ -306,16 +308,18 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
   return (
     <div className="tela-inicio">
       <section className="hero">
-        <h1>Um conselho de administração inteiro para a sua ideia — em minutos</h1>
+        <h1>Um conselho de administração inteiro para a sua ideia, em minutos</h1>
         <p>
-          Não é pedir para o ChatGPT "agir como um board": são <strong>13 conselheiros</strong> com
-          vieses próprios que <strong>debatem entre si, mudam de voto</strong> e entregam um veredito,
-          um <strong>plano detalhado em PDF</strong> e um <strong>prompt de execução</strong>. São
-          doze especialistas — finanças, marketing, tecnologia, produto, design, vendas, jurídico e
-          mais — que debatem e votam, mais a Presidente que sintetiza tudo. E cada ideia vira um{' '}
-          <strong>projeto contínuo</strong>: o conselho acompanha reunião após reunião, como o board
-          de uma empresa de verdade — não é análise de uma vez só. Rode <strong>grátis no seu plano
-          do Claude</strong> ou com a API que você preferir.
+          Não é pedir para o ChatGPT "fingir que é um conselho": são <strong>13 conselheiros</strong>{' '}
+          com opiniões próprias que <strong>debatem entre si, mudam de voto</strong> e entregam um
+          veredito, um <strong>plano detalhado em PDF</strong> e um{' '}
+          <strong>prompt de execução</strong> (um texto pronto para pôr a ideia em prática). São doze
+          especialistas (finanças, marketing, tecnologia, produto, design, vendas, jurídico e mais)
+          que debatem e votam, mais a Presidente que junta tudo numa conclusão. E cada ideia vira um{' '}
+          <strong>projeto contínuo</strong>: o conselho acompanha reunião após reunião, como o de uma
+          empresa de verdade. Não é uma análise de uma vez só. Rode{' '}
+          <strong>de graça no seu chat de IA</strong> (ChatGPT, Claude, Gemini e outros) ou com a API
+          que você preferir.
         </p>
       </section>
 
@@ -353,7 +357,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             📎 Anexar arquivos
           </button>
           <span className="campo-dica">
-            Identidade visual, mockups, pesquisa… Imagens, PDF ou texto — os conselheiros analisam
+            Identidade visual, mockups, pesquisa… Imagens, PDF ou texto: os conselheiros analisam
             tudo junto com a ideia.
           </span>
         </div>
@@ -397,7 +401,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
                   type="text"
                   value={repoEntrada}
                   onChange={(e) => setRepoEntrada(e.target.value)}
-                  placeholder="https://github.com/dono/repositorio — se o projeto já tem código"
+                  placeholder="https://github.com/dono/repositorio (se o projeto já tem código)"
                   spellCheck={false}
                 />
                 <button
@@ -463,8 +467,8 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
                 {lendoPasta ? 'Lendo a pasta…' : '📁 Analisar uma pasta do computador'}
               </button>
               <span className="campo-dica">
-                Tem um projeto <strong>ainda não publicado no GitHub</strong>? Escolha a pasta dele
-                — o navegador lê o código aí mesmo, monta um resumo (árvore, README, trechos) e o
+                Tem um projeto <strong>ainda não publicado no GitHub</strong>? Escolha a pasta dele:
+                o navegador lê o código aí mesmo, monta um resumo (árvore, README, trechos) e o
                 conselho analisa.
               </span>
               <AvisoEgresso provedor={provedor} />
@@ -502,9 +506,8 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
         <div className="campo cartao-conectar">
           <span className="campo-rotulo">Inteligência artificial</span>
           <p className="conectar-texto">
-            <strong>Nenhuma API de IA conectada.</strong> Por enquanto a reunião roda em{' '}
-            <em>modo demonstração</em>: respostas simuladas, sem custo, para você conhecer a
-            interface.
+            <strong>Nenhuma IA conectada ainda.</strong> Por enquanto a reunião roda em{' '}
+            <em>modo de teste</em>: respostas de exemplo, sem custo, só para você conhecer a tela.
           </p>
           <button
             type="button"
@@ -514,8 +517,10 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             🔌 Conectar uma API de IA
           </button>
           <span className="campo-dica">
-            Funciona com Anthropic, OpenAI ou qualquer API compatível (Ollama local, LM Studio,
-            OpenRouter…). Sua chave fica somente neste navegador.
+            A chave de API é a senha paga que liga o app à IA. Funciona com Anthropic, OpenAI ou
+            qualquer serviço parecido (Ollama no seu computador, LM Studio, OpenRouter…). A chave
+            fica só neste navegador. Prefere não pagar? Use{' '}
+            <strong>Rodar de graça no seu chat de IA</strong>.
           </span>
         </div>
       )}
@@ -525,7 +530,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
           className="disclosure-summary"
           style={{ cursor: 'pointer', color: 'var(--ouro-claro)', fontWeight: 600, padding: '6px 0' }}
         >
-          ⚙ Opções avançadas — modelo, rodadas de debate, entregáveis
+          ⚙ Opções avançadas: modelo, rodadas de debate, entregáveis
         </summary>
         <div className="linha-opcoes">
         {configurado && (
@@ -610,7 +615,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             </div>
             <span className="campo-dica">
               {modoDebate === 'consenso'
-                ? 'O debate se repete até TODOS votarem Aprovar ou TODOS votarem Rejeitar. Ressalvas não encerram: viram condições debatidas até serem resolvidas (máximo de 5 rodadas — atenção ao custo).'
+                ? 'O debate se repete até TODOS votarem Aprovar ou TODOS votarem Rejeitar. Ressalvas não encerram: viram condições debatidas até serem resolvidas (máximo de 5 rodadas; atenção ao custo).'
                 : 'No debate, os conselheiros leem as posições uns dos outros, rebatem e podem mudar de voto.'}
             </span>
           </fieldset>
@@ -626,7 +631,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
               <span>
                 📄 Plano detalhado (documento com PDF)
                 <small>
-                  Pesquisa de mercado, SWOT, cronograma, orçamento com gráficos e riscos — para
+                  Pesquisa de mercado, SWOT, cronograma, orçamento com gráficos e riscos: para
                   avaliar a ideia antes de executar qualquer coisa.
                 </small>
               </span>
@@ -651,8 +656,8 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             <label className="alternador">
               <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
               <span>
-                Modo demonstração
-                <small>Respostas simuladas para conhecer a interface, sem custo.</small>
+                Modo de teste
+                <small>Respostas de exemplo para conhecer a tela, sem custo.</small>
               </span>
             </label>
           )}
@@ -665,7 +670,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
           type="button"
           className="botao-ver-exemplo"
           onClick={verExemplo}
-          title="Roda uma reunião de exemplo já preenchida, em modo demonstração, sem custo"
+          title="Roda uma reunião de exemplo já preenchida, sem custo"
           style={{
             alignSelf: 'stretch',
             border: '1px solid var(--ouro)',
@@ -677,7 +682,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             fontSize: '1rem',
           }}
         >
-          ▶ Ver reunião de exemplo — 1 clique, sem digitar, sem custo
+          ▶ Ver reunião de exemplo: 1 clique, sem digitar, sem custo
         </button>
 
         <div className="botoes-convocar">
@@ -689,7 +694,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
               🔔 Convocar o Conselho
             </button>
             <small className="selo-custo" style={{ fontSize: '0.75rem', color: 'var(--texto-suave)' }}>
-              {demo ? '🎭 modo demonstração — sem custo' : '🔑 usa sua chave de API'}
+              {demo ? '🎭 modo de teste, sem custo' : '🔑 usa sua chave de API'}
             </small>
           </div>
           <div
@@ -699,7 +704,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             <button
               className="botao-secundario botao-cc botao-coprimario"
               disabled={faltaIdeia}
-              title="Roda o conselho dentro do Claude Code, no seu plano Pro/Max — sem gastar API"
+              title="Gera um prompt para colar no ChatGPT, Claude, Gemini ou outro chat de IA. Roda no seu plano, sem custo."
               style={{ borderColor: 'var(--ouro)' }}
               onClick={() =>
                 setBriefingCC(
@@ -715,10 +720,10 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
                 )
               }
             >
-              🖥 Rodar no Claude Code
+              🖥 Rodar de graça
             </button>
             <small className="selo-custo" style={{ fontSize: '0.75rem', color: 'var(--texto-suave)' }}>
-              ✨ grátis no seu plano Pro/Max
+              ✨ Cola num chat de IA (ChatGPT, Claude, Gemini…). Roda no seu plano, sem custo.
             </small>
           </div>
         </div>
@@ -728,8 +733,9 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
           <span className="estimativa-chamadas">{estimativa}</span>
         )}
         <span className="campo-dica">
-          Já paga o plano do Claude (Pro/Max)? Use <strong>Rodar no Claude Code</strong> — o
-          conselho roda no seu plano, sem gastar API.
+          Não quer pagar nada? Use <strong>Rodar de graça no seu chat de IA</strong>: o app gera um
+          prompt, você cola no ChatGPT, Claude, Gemini ou outro, e o conselho roda ali, no plano que
+          você já usa.
         </span>
       </div>
 

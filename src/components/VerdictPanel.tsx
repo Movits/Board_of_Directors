@@ -36,7 +36,7 @@ export function VerdictPanel({ veredito, streamando, reuniao }: Props) {
         <div className="veredito-acoes">
           <button
             onClick={() => exportaObsidian(reuniao)}
-            title="Ata com frontmatter e [[wikilinks]] — solte em brain/reuniões do vault"
+            title="Ata com frontmatter e [[wikilinks]]: solte em brain/reuniões do vault"
           >
             🧠 Exportar ata (Obsidian)
           </button>
@@ -46,7 +46,7 @@ export function VerdictPanel({ veredito, streamando, reuniao }: Props) {
       )}
       {/* Disclaimer no ponto de consumo (pedido da Dra. Renata) */}
       <p className="campo-dica">
-        Conteúdo gerado por IA — não é aconselhamento jurídico ou financeiro; valide de forma independente.
+        Conteúdo gerado por IA. Não é aconselhamento jurídico ou financeiro; valide de forma independente.
       </p>
     </section>
   )

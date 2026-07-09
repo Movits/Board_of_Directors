@@ -86,7 +86,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
   const atualiza = (mudancas: Partial<Projeto>) => {
     const novo = { ...projeto, ...mudancas, atualizadoEm: new Date().toISOString() }
     if (!gravaProjeto(novo)) {
-      setErro('O armazenamento do navegador está cheio — remova anexos ou exclua projetos antigos.')
+      setErro('O armazenamento do navegador está cheio: remova anexos ou exclua projetos antigos.')
       return
     }
     setErro('')
@@ -157,7 +157,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
   const motivoBloqueio = pautaCurta
     ? 'Escreva a pauta: o que mudou desde a última reunião e o que você quer da equipe agora (mín. 10 caracteres).'
     : pdfSemSuporte
-      ? 'Há PDF anexado e só o provedor Claude lê PDFs — troque o provedor ou remova o PDF.'
+      ? 'Há PDF anexado e só o provedor Claude lê PDFs; troque o provedor ou remova o PDF.'
       : null
 
   // Estimativa de custo do acompanhamento — mesma fórmula da tela inicial:
@@ -223,7 +223,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
       </p>
       <p className="campo-dica">
         🔄 A equipe acompanha este projeto <strong>reunião após reunião</strong>: cada
-        acompanhamento parte da ideia, dos materiais e da decisão da última reunião — como um
+        acompanhamento parte da ideia, dos materiais e da decisão da última reunião, como um
         conselho que se reúne de novo para levar o projeto adiante.
       </p>
 
@@ -261,7 +261,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
             ))}
           </ul>
         ) : (
-          <p className="campo-dica">Nenhum anexo ainda — identidade visual, mockups, pesquisa…</p>
+          <p className="campo-dica">Nenhum anexo ainda: identidade visual, mockups, pesquisa…</p>
         )}
         <button type="button" className="botao-secundario" onClick={() => arquivoRef.current?.click()}>
           📎 Anexar arquivos
@@ -358,9 +358,9 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
         {erro && <div className="aviso aviso-erro">{erro}</div>}
         <p className="campo-dica">
           🔒 Anexos, repositório e pasta ficam no seu navegador. Numa reunião <strong>paga</strong>,
-          o conteúdo é enviado ao provedor de IA ({info.rotulo}) apenas para a análise — nunca a
-          outros servidores. Com <strong>🖥 Rodar no Claude Code</strong>, nem isso: fica tudo
-          local.
+          o conteúdo é enviado ao provedor de IA ({info.rotulo}) apenas para a análise, nunca a
+          outros servidores. Com <strong>🖥 Rodar de graça no seu chat de IA</strong>, nem isso:
+          fica tudo no seu computador.
           {linkUsoDados && (
             <>
               {' '}
@@ -411,7 +411,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
         <h2>🔔 Nova reunião de acompanhamento</h2>
         <p className="campo-dica">
           A equipe já conhece o projeto: os conselheiros recebem a ideia, os materiais, o
-          repositório e o resumo da última reunião — e focam em aperfeiçoar e orientar o próximo
+          repositório e o resumo da última reunião, e focam em aperfeiçoar e orientar o próximo
           passo.
         </p>
         <label className="campo">
@@ -485,8 +485,8 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
               disabled={motivoBloqueio !== null}
               title={
                 demo
-                  ? 'Modo demonstração: reunião simulada, sem custo.'
-                  : 'Usa a sua chave de API — o consumo é cobrado pelo provedor.'
+                  ? 'Modo de teste: reunião de exemplo, sem custo.'
+                  : 'Usa a sua chave de API. O consumo é cobrado pelo provedor.'
               }
               onClick={convocarAcompanhamento}
             >
@@ -495,7 +495,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
             <button
               className="botao-secundario botao-cc"
               disabled={pautaCurta}
-              title="Roda o acompanhamento dentro do Claude Code, no seu plano Pro/Max — sem gastar API"
+              title="Gera um prompt para colar no ChatGPT, Claude, Gemini ou outro chat de IA. Roda no seu plano, sem custo."
               onClick={() =>
                 setBriefingCC(
                   promptParaClaudeCode({
@@ -511,7 +511,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
                 )
               }
             >
-              🖥 Rodar no Claude Code — grátis no seu plano
+              🖥 Rodar de graça no seu chat de IA
             </button>
           </div>
           {motivoBloqueio ? (
@@ -519,7 +519,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
           ) : (
             <span className="estimativa-chamadas">
               {demo
-                ? 'Sem API conectada: a reunião rodará em modo demonstração (simulada, sem custo).'
+                ? 'Sem API conectada: a reunião rodará em modo de teste (de exemplo, sem custo).'
                 : `Todos os 12 conselheiros participam, com ${info.rotulo} (${modeloAtual}).` +
                   (estimativaCusto
                     ? ` Estimativa: ${formataFaixaUsd(estimativaCusto)}${
@@ -530,8 +530,8 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
           )}
           <span className="campo-dica">
             🔔 <strong>Convocar</strong>{' '}
-            {demo ? 'roda em modo demonstração, sem custo' : 'usa a sua chave de API'} · 🖥{' '}
-            <strong>Rodar no Claude Code</strong> é grátis no seu plano Pro/Max.
+            {demo ? 'roda em modo de teste, sem custo' : 'usa a sua chave de API'} · 🖥{' '}
+            <strong>Rodar de graça no seu chat de IA</strong> não tem custo.
           </span>
         </div>
       </section>

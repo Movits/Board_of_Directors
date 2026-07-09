@@ -565,7 +565,7 @@ ${divergencias.join('\n')}
 ${palavraFinal}
 
 ---
-*Esta reunião foi uma simulação do modo demonstração — nenhuma IA foi consultada e os votos acima são ilustrativos. Para a análise real do conselho, conecte sua API de IA (a chave fica só no seu navegador) ou rode grátis no seu plano com o botão **🖥 Rodar no Claude Code** da tela inicial.*`
+*Esta reunião foi um exemplo (modo de teste): nenhuma IA foi consultada e os votos acima são só ilustrativos. Para a análise de verdade do conselho, conecte a sua chave de IA (ela fica só no seu navegador) ou use o botão **🖥 Rodar de graça** da tela inicial, que gera um texto para colar no chat de IA que você já usa (ChatGPT, Claude, Gemini e outros), sem custo.*`
 }
 
 function textoPromptDemo(ideia: string): string {
@@ -611,15 +611,15 @@ Construir a primeira versão do projeto descrito: "${resumo(ideia)}". O objetivo
 5. Lançar para um grupo pequeno e medir.
 
 ---
-*Este prompt é um exemplo do modo demonstração — mostra a estrutura, não o conteúdo real. Conecte sua API de IA ou rode grátis no seu plano com o botão **🖥 Rodar no Claude Code** para receber um prompt completo e específico para a sua ideia.*`
+*Este é um prompt de exemplo (modo de teste): mostra a estrutura, não o conteúdo de verdade. Conecte a sua chave de IA ou use o botão **🖥 Rodar de graça** (cola num chat de IA que você já usa, sem custo) para receber um prompt completo e feito sob medida para a sua ideia.*`
 }
 
 function planoDemo(ideia: string): Plano {
   return {
     titulo: `Plano de Negócio — ${resumo(ideia)}`,
-    subtitulo: 'Documento de exemplo gerado no modo demonstração',
+    subtitulo: 'Documento de exemplo (modo de teste)',
     resumo_executivo:
-      'Este é um plano de exemplo do modo demonstração — uma simulação, sem consultar nenhuma IA. Conectando sua API de IA, ou rodando grátis no seu plano com o botão Rodar no Claude Code, o conselho compila aqui a decisão da reunião em um plano completo e específico para a sua ideia.\n\nO conselho recomendou aprovar, tratando as validações de demanda como condições incorporadas ao roadmap. O plano prioriza velocidade de aprendizado com investimento mínimo.',
+      'Este é um plano de exemplo (modo de teste): uma simulação, sem consultar nenhuma IA. Conectando a sua chave de IA, ou usando o botão Rodar de graça (que gera um texto para colar num chat de IA que você já usa, sem custo), o conselho reúne aqui a decisão da reunião em um plano completo e feito sob medida para a sua ideia.\n\nO conselho recomendou aprovar, tratando as validações de demanda como condições incorporadas ao roadmap. O plano prioriza velocidade de aprendizado com investimento mínimo.',
     publico_alvo:
       'Adotantes iniciais urbanos, 25–45 anos, que já usam soluções digitais no dia a dia e valorizam conveniência — começando por um nicho específico antes de expandir.',
     proposta_valor: 'O jeito mais simples de resolver o problema central do público, sem fricção e com confiança desde o primeiro uso.',

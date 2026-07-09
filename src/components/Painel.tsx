@@ -314,7 +314,7 @@ export function Painel() {
         <h1>Painel do Conselho</h1>
         <p className="historico-vazio">
           Rode algumas reuniões para ver seus números aqui. Tudo é calculado 100% no seu
-          navegador — nada sai daqui.
+          navegador. Nada sai daqui.
         </p>
       </div>
     )
@@ -334,8 +334,8 @@ export function Painel() {
         </button>
       </header>
       <p className="campo-dica">
-        Analytics 100% local: derivado apenas das reuniões e projetos salvos neste navegador.
-        Nenhum texto de ideia, veredito ou anexo aparece aqui — e nada vai para a rede.
+        Números 100% locais: calculados apenas a partir das reuniões e projetos salvos neste
+        navegador. Nenhum texto de ideia, veredito ou anexo aparece aqui, e nada vai para a rede.
       </p>
 
       {/* ── Métricas de funil (M1/M2/M3) ─────────────────────────────────────── */}
@@ -356,7 +356,7 @@ export function Painel() {
             </span>
             <span className="painel-metrica-sub">
               {metricas.ativadas} de {metricas.concluidas} concluídas geraram valor (prompt, plano
-              ou acompanhamento). Sem evento instrumentado — estimado pelo que ficou salvo.
+              ou acompanhamento). Sem medição exata; estimado pelo que ficou salvo.
             </span>
           </div>
           <div className="painel-metrica cartao">
@@ -374,8 +374,8 @@ export function Painel() {
       <section aria-labelledby="painel-votos">
         <h2 id="painel-votos">Como cada conselheiro vota</h2>
         <p className="campo-dica">
-          Votos finais ao longo do histórico — quem é mais duro (rejeita/ressalva) e quem é mais
-          otimista (aprova). É o spread real do seu conselho.
+          Votos finais ao longo do histórico: quem é mais duro (rejeita/ressalva) e quem é mais
+          otimista (aprova). É o retrato real do seu conselho.
         </p>
         <ul className="painel-lista-barras">
           {metricas.votosPorConselheiro.map((t) => (
@@ -445,8 +445,8 @@ export function Painel() {
             <span className="painel-metrica-numero">{mostraPct(metricas.taxaMudou)}</span>
             <span className="painel-metrica-titulo">Mudança de voto</span>
             <span className="painel-metrica-sub">
-              {metricas.debatesMudou} de {metricas.debatesTotal} falas de debate mudaram o voto —
-              mede se o dissenso estrutural move alguém.
+              {metricas.debatesMudou} de {metricas.debatesTotal} falas de debate mudaram o voto.
+              Mostra se a discordância de fato move alguém.
             </span>
           </div>
           <div className="painel-metrica cartao">
@@ -476,8 +476,8 @@ export function Painel() {
             <span className="painel-metrica-titulo">Total estimado</span>
             <span className="painel-metrica-sub">
               Somando {metricas.reunioesComCusto} reuni
-              {metricas.reunioesComCusto === 1 ? 'ão' : 'ões'} com preço conhecido (demo e modelos
-              sem tabela ficam de fora).
+              {metricas.reunioesComCusto === 1 ? 'ão' : 'ões'} com preço conhecido (o modo de teste
+              e modelos sem tabela de preço ficam de fora).
             </span>
           </div>
           <div className="painel-metrica cartao">
@@ -486,7 +486,7 @@ export function Painel() {
             </span>
             <span className="painel-metrica-titulo">Média por reunião</span>
             <span className="painel-metrica-sub">
-              {formataTokens(metricas.tokensTotal)} tokens no total. Valores aproximados (“≈”) — a
+              {formataTokens(metricas.tokensTotal)} tokens no total. Valores aproximados (“≈”); a
               conta real depende do provedor.
             </span>
           </div>
@@ -499,7 +499,7 @@ export function Painel() {
         {feedbackComItens.length === 0 ? (
           <p className="campo-dica">
             Você ainda não avaliou nenhuma resposta com 👍/👎. Os polegares dentro da reunião ficam
-            registrados aqui — mostram por cargo onde o conselho mais precisa de ajuste.
+            registrados aqui e mostram, por cargo, onde o conselho mais precisa de ajuste.
           </p>
         ) : (
           <ul className="painel-lista-barras">
@@ -523,7 +523,7 @@ export function Painel() {
         <p className="campo-dica">
           Opcional. Gera um JSON só com <strong>números e categorias</strong> (as métricas acima):
           nenhuma ideia, veredito, pauta, nome de projeto, anexo ou chave de API entra nele. Nada é
-          enviado automaticamente — você confere o conteúdo e copia se quiser compartilhar.
+          enviado automaticamente: você confere o conteúdo e copia se quiser compartilhar.
         </p>
         <div className="painel-diag-acoes">
           <button className="botao-principal" onClick={copiarDiagnostico}>

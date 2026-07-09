@@ -23,7 +23,7 @@ function FeedbackResposta({ membroId, origem, texto, ancora }: FeedbackProps) {
   if (salvo !== null) {
     return (
       <div className="feedback-salvo">
-        ✓ Avaliação salva {salvo ? '👍' : '👎'} — este conselheiro vai levá-la em conta nas próximas
+        ✓ Avaliação salva {salvo ? '👍' : '👎'}. Este conselheiro vai levá-la em conta nas próximas
         reuniões.
       </div>
     )
@@ -105,7 +105,7 @@ export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
         className="gaveta"
         role="dialog"
         aria-modal="true"
-        aria-label={`${membro.nome} — ${membro.cargo}`}
+        aria-label={`${membro.nome}, ${membro.cargo}`}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="gaveta-cabecalho" style={{ ['--cor' as string]: membro.cor }}>
@@ -181,8 +181,8 @@ export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
                 </section>
                 {demo ? (
                   <p className="feedback-demo-nota">
-                    👍/👎 desativados no modo demonstração — as respostas são simuladas. Conecte
-                    uma API para treinar este conselheiro com seu feedback.
+                    👍/👎 desativados no modo de teste: as respostas são de exemplo. Conecte
+                    uma API para treinar este conselheiro com o seu feedback.
                   </p>
                 ) : (
                   <FeedbackResposta
@@ -195,7 +195,7 @@ export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
                 {(estado.debate ?? []).map((d, i) => (
                   <section key={i} className="bloco-debate">
                     <h3>
-                      🗣️ Debate — rodada {i + 1}
+                      🗣️ Debate · rodada {i + 1}
                       {d.mudou_voto && <span className="selo-mudou"> mudou de voto</span>}
                     </h3>
                     {d.reacoes.map((r, j) => (
@@ -231,7 +231,7 @@ export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
                 {(estado.falhasDebate?.length ?? 0) > 0 && (
                   <p className="nota-falha-debate">
                     ⚠ A chamada de debate falhou na rodada{' '}
-                    {estado.falhasDebate!.join(', ')} — este conselheiro manteve a posição
+                    {estado.falhasDebate!.join(', ')}: este conselheiro manteve a posição
                     anterior nessas rodadas.
                   </p>
                 )}
@@ -257,7 +257,7 @@ export function MemberDrawer({ membro, estado, demo, aoFechar }: Props) {
               <h3>🧠 Aprendizados (feedback que você deu)</h3>
               {feedbacks.length === 0 ? (
                 <p className="campo-dica">
-                  Nenhuma avaliação ainda. Use 👍/👎 nas respostas da aba Reunião — o feedback muda o
+                  Nenhuma avaliação ainda. Use 👍/👎 nas respostas da aba Reunião. O feedback muda o
                   comportamento apenas deste conselheiro.
                 </p>
               ) : (

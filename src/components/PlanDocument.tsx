@@ -89,7 +89,7 @@ export function PlanDocument({ plano, demo, aoFechar }: Props) {
           <button
             className="botao-principal botao-compacto"
             onClick={() => window.print()}
-            title="Abre a impressão do navegador — escolha “Salvar como PDF” como destino"
+            title="Abre a impressão do navegador. Escolha “Salvar como PDF” como destino."
           >
             🖨 Salvar em PDF
           </button>
@@ -102,14 +102,14 @@ export function PlanDocument({ plano, demo, aoFechar }: Props) {
       <article className="documento">
         {/* ── Capa ─────────────────────────────────────────────────────── */}
         <header className="doc-capa doc-secao">
-          {demo && <p className="doc-selo-demo">DOCUMENTO DE DEMONSTRAÇÃO</p>}
+          {demo && <p className="doc-selo-demo">DOCUMENTO DE EXEMPLO</p>}
           <p className="doc-capa-chapeu">Plano elaborado pelo Conselho de Administração de IA</p>
           <h1>{plano.titulo}</h1>
           <p className="doc-capa-sub">{plano.subtitulo}</p>
           <p className="doc-capa-data">{data}</p>
           <p className="doc-capa-disclaimer">
-            Conteúdo gerado por inteligência artificial — valide números, prazos e decisões de
-            forma independente antes de investir.
+            Conteúdo gerado por inteligência artificial. Confira os números, os prazos e as decisões
+            por conta própria antes de investir.
           </p>
         </header>
 
@@ -244,7 +244,7 @@ export function PlanDocument({ plano, demo, aoFechar }: Props) {
               <tr className="doc-linha-total">
                 <td><strong>Total estimado</strong></td>
                 <td><strong>{moeda.format(totalOrcamento)}</strong></td>
-                <td>valores aproximados — revisar a cada fase</td>
+                <td>valores aproximados, revisar a cada fase</td>
               </tr>
             </tbody>
           </table>
@@ -309,8 +309,8 @@ export function PlanDocument({ plano, demo, aoFechar }: Props) {
         </section>
 
         <footer className="doc-rodape">
-          Documento gerado pelo Board of Directors — conselho de administração de IA. Valores e
-          estimativas são aproximados e devem ser validados antes de decisões financeiras.
+          Documento gerado pelo Board of Directors, um conselho de administração de IA. Valores e
+          estimativas são aproximados e devem ser conferidos antes de decisões financeiras.
         </footer>
       </article>
     </div>

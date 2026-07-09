@@ -32,13 +32,13 @@ export function ModalTeto({ estimativaTexto, aoConfirmar, aoCancelar }: Props) {
         </header>
 
         <p className="cc-intro">
-          Esta reunião pode custar <strong>{estimativaTexto}</strong> — acima do seu teto.
+          Esta reunião pode custar <strong>{estimativaTexto}</strong>, acima do seu teto.
           Confirmar?
         </p>
         <p className="campo-dica">
           Você pode ajustar o teto em Configurações, ou cancelar e reduzir as rodadas de debate, os
-          anexos ou trocar por um modelo mais barato. Dica: <strong>🖥 Rodar no Claude Code</strong>{' '}
-          é grátis no seu plano Pro/Max.
+          anexos ou trocar por um modelo mais barato. Dica:{' '}
+          <strong>🖥 Rodar de graça no seu chat de IA</strong> não tem custo.
         </p>
 
         <div className="cc-acoes" style={{ gap: 10, flexWrap: 'wrap' }}>

@@ -6,8 +6,8 @@ interface Props {
   aoFechar: () => void
 }
 
-/** Modal com o briefing pronto para colar no Claude Code — roda o conselho no
- *  plano do usuário (sem gastar API). */
+/** Modal com o prompt pronto para colar em qualquer chat de IA, para rodar o
+ *  conselho no plano do usuário (sem gastar API). */
 export function ClaudeCodePanel({ prompt, aoFechar }: Props) {
   const [copiado, setCopiado] = useState(false)
   const preRef = useRef<HTMLPreElement>(null)
@@ -37,34 +37,34 @@ export function ClaudeCodePanel({ prompt, aoFechar }: Props) {
         className="cc-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Rodar no Claude Code"
+        aria-label="Rodar de graça no seu chat de IA"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="cc-cabecalho">
-          <h2>🖥 Rodar no Claude Code</h2>
+          <h2>🖥 Rodar de graça no seu chat de IA</h2>
           <button className="documento-fechar" onClick={aoFechar}>
             ✕ Fechar
           </button>
         </header>
 
         <p className="cc-intro">
-          Roda no <strong>seu plano</strong> (Pro/Max) — <strong>sem gastar API</strong>. Copie o
-          briefing abaixo e cole numa sessão do <strong>Claude Code</strong> (terminal, VS Code,
-          JetBrains ou claude.ai/code). Ele convoca os 13 conselheiros, debate, vota e entrega o
-          veredito, o plano e o prompt de execução — e, se for um projeto de código, pode
-          implementar na hora.
+          Roda <strong>no plano que você já usa</strong>, <strong>sem custo</strong>. Copie o texto
+          abaixo e cole no seu chat de IA (ChatGPT, Claude, Gemini, Copilot ou outro). Ele convoca os
+          13 conselheiros, faz o debate, a votação e entrega o veredito, o plano e o prompt de
+          execução. Bônus: em assistentes que mexem em código (como o Claude Code ou o Cursor), ele
+          ainda lê o seu projeto e pode até criar as coisas por você.
         </p>
         <p className="campo-dica">
-          Não tem o Claude Code? Instale em{' '}
+          Funciona em qualquer chat de IA. Um exemplo que também mexe em código é o Claude Code (
           <a href="https://claude.com/claude-code" target="_blank" rel="noreferrer">
             claude.com/claude-code
           </a>
-          . As reuniões feitas lá não aparecem no Histórico do app.
+          ). As reuniões feitas fora do app não aparecem no seu Histórico aqui.
         </p>
 
         <div className="cc-acoes">
           <button className="botao-principal" onClick={copiar}>
-            {copiado ? '✓ Copiado!' : '⧉ Copiar briefing'}
+            {copiado ? '✓ Copiado!' : '⧉ Copiar o prompt'}
           </button>
         </div>
 
