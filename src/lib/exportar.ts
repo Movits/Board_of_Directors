@@ -3,6 +3,10 @@ import { MEMBROS, membroPorId } from '../board/members'
 import { ROTULO_VOTO } from '../board/prompts'
 import { votoDoConsenso, votoFinalDe } from '../board/orchestrator'
 
+/** Disclaimer de IA no ponto de consumo (pedido da Dra. Renata) — mesmo texto do VerdictPanel. */
+const DISCLAIMER_IA =
+  'Conteúdo gerado por IA — não é aconselhamento jurídico ou financeiro; valide de forma independente.'
+
 export function reuniaoParaMarkdown(reuniao: Reuniao): string {
   const data = new Date(reuniao.data).toLocaleString('pt-BR')
   const linhas: string[] = [
@@ -65,6 +69,8 @@ export function reuniaoParaMarkdown(reuniao: Reuniao): string {
       '````',
     )
   }
+
+  linhas.push('', '---', '', `_${DISCLAIMER_IA}_`)
   return linhas.join('\n')
 }
 
@@ -236,7 +242,7 @@ export function reuniaoParaObsidian(reuniao: Reuniao): string {
     )
   }
 
-  linhas.push('', '---', '', 'Relacionado: [[Reunião]] · [[Consenso Pleno]] · [[Votos]]')
+  linhas.push('', '---', '', `_${DISCLAIMER_IA}_`, '', 'Relacionado: [[Reunião]] · [[Consenso Pleno]] · [[Votos]]')
   return linhas.join('\n')
 }
 

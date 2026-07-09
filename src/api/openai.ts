@@ -1,5 +1,25 @@
 import OpenAI from 'openai'
-import type { Anexo, Transporte } from '../types'
+import type { Anexo, Transporte, UsoTokens } from '../types'
+
+/** Timeout por chamada: um provedor local/custom travado não prende a reunião. */
+const TIMEOUT_CHAMADA_MS = 120_000
+
+function comTimeout(signal: AbortSignal | undefined): AbortSignal {
+  const t = AbortSignal.timeout(TIMEOUT_CHAMADA_MS)
+  return signal ? AbortSignal.any([signal, t]) : t
+}
+
+function reportaUso(
+  onUsage: ((u: UsoTokens) => void) | undefined,
+  usage: OpenAI.Completions.CompletionUsage | undefined | null,
+) {
+  if (!onUsage || !usage) return
+  onUsage({
+    entrada: usage.prompt_tokens ?? 0,
+    saida: usage.completion_tokens ?? 0,
+    cache: usage.prompt_tokens_details?.cached_tokens ?? undefined,
+  })
+}
 
 export const MODELOS_OPENAI = [
   { id: 'gpt-5.5', rotulo: 'GPT-5.5', detalhe: 'modelo mais capaz da OpenAI' },
@@ -88,6 +108,7 @@ export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }
     signal: AbortSignal | undefined,
     comSchema: boolean,
     anexos?: Anexo[],
+    onUsage?: (u: UsoTokens) => void,
   ) => {
     const pedidoJson = comSchema
       ? {
@@ -110,7 +131,7 @@ export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }
         ],
         ...pedidoJson,
       },
-      { signal },
+      { signal: comTimeout(signal) },
     )
     const escolha = resposta.choices[0]
     if (escolha?.message?.refusal) {
@@ -118,15 +139,16 @@ export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }
     }
     const texto = escolha?.message?.content
     if (!texto) throw new Error('A API retornou uma resposta vazia.')
+    reportaUso(onUsage, resposta.usage)
     return comSchema ? texto : extraiJson(texto)
   }
 
   return {
-    async estruturada({ system, user, schema, signal, anexos }) {
+    async estruturada({ system, user, schema, signal, anexos, onUsage }) {
       try {
         if (!usaFallbackJson) {
           try {
-            return await chamadaEstruturada(system, user, schema, signal, true, anexos)
+            return await chamadaEstruturada(system, user, schema, signal, true, anexos, onUsage)
           } catch (err) {
             // API sem suporte a response_format json_schema → tenta via instrução
             if (compat && err instanceof OpenAI.BadRequestError) {
@@ -136,25 +158,26 @@ export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }
             }
           }
         }
-        return await chamadaEstruturada(system, user, schema, signal, false, anexos)
+        return await chamadaEstruturada(system, user, schema, signal, false, anexos, onUsage)
       } catch (err) {
         throw traduzErro(err)
       }
     },
 
-    async streamada({ system, user, onDelta, signal, anexos }) {
+    async streamada({ system, user, onDelta, signal, anexos, onUsage }) {
       try {
         const stream = await client.chat.completions.create(
           {
             model: modelo,
             ...limite(16000),
             stream: true,
+            stream_options: { include_usage: true },
             messages: [
               { role: 'system', content: system },
               { role: 'user', content: montaConteudo(user, anexos) },
             ],
           },
-          { signal },
+          { signal: comTimeout(signal) },
         )
         let completo = ''
         for await (const pedaco of stream) {
@@ -163,6 +186,8 @@ export function criaTransporteOpenai({ apiKey, modelo, baseUrl, compat = false }
             completo += delta
             onDelta(delta)
           }
+          // O chunk final (com include_usage) carrega o usage e choices vazio.
+          if (pedaco.usage) reportaUso(onUsage, pedaco.usage)
         }
         if (!completo) throw new Error('A API retornou uma resposta vazia.')
         return completo

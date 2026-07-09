@@ -14,6 +14,8 @@ import {
   leModelosDescobertos,
   lePersonas,
   leProvedor,
+  limpaChaves,
+  limpaTudo,
 } from '../lib/storage'
 import { PersonaForm } from './PersonaForm'
 
@@ -49,6 +51,27 @@ export function Settings() {
     setMostraChave(false)
     setErroBusca('')
     confirmaSalvo()
+  }
+
+  const limparCredenciais = () => {
+    const confirmado = window.confirm(
+      'Remover as chaves de API e o token do GitHub salvos neste navegador? ' +
+        'Projetos, reuniões e demais dados não são afetados.',
+    )
+    if (!confirmado) return
+    limpaChaves()
+    setChave('')
+    confirmaSalvo()
+  }
+
+  const apagarTudo = () => {
+    const confirmado = window.confirm(
+      'Apagar TODOS os dados deste app neste navegador — projetos, reuniões, feedback, ' +
+        'personas e chaves de API? Esta ação não pode ser desfeita.',
+    )
+    if (!confirmado) return
+    limpaTudo()
+    location.reload()
   }
 
   const buscarModelos = async () => {
@@ -341,6 +364,23 @@ export function Settings() {
             )
           })}
         </ul>
+      </section>
+
+      <section className="cartao-config">
+        <h2>🧹 Dados deste navegador</h2>
+        <p>
+          Tudo que o app guarda — chaves, projetos, reuniões, feedback e personas — fica apenas no{' '}
+          <em>localStorage</em> deste navegador. Use os botões abaixo para limpar antes de sair de
+          um computador compartilhado.
+        </p>
+        <div className="linha-chave">
+          <button onClick={limparCredenciais}>Limpar chaves de API e token</button>
+          <button onClick={apagarTudo}>Apagar TODOS os dados deste navegador</button>
+        </div>
+        <span className="campo-dica">
+          O segundo botão apaga também projetos e reuniões — irreversível. A tela recarrega em
+          seguida.
+        </span>
       </section>
 
       {salvo && <div className="brinde">✓ Salvo</div>}

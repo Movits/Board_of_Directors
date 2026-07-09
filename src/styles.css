@@ -632,6 +632,26 @@ input:focus {
   color: var(--texto-suave);
 }
 
+/* Botão de interromper a reunião em andamento (canto do cabeçalho). */
+.sala-interromper {
+  margin-top: 12px;
+  align-self: flex-start;
+}
+
+/* Linha do medidor de custo real, abaixo do placar. */
+.sala-custo {
+  margin: 0 0 4px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  background: var(--fundo-suave, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+}
+.sala-custo strong {
+  color: var(--texto);
+}
+
 /* ── Rodar no Claude Code (par de botões + modal do briefing) ──────────── */
 
 .botoes-convocar {

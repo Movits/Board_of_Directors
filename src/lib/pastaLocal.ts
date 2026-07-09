@@ -1,5 +1,5 @@
 import type { PastaLocal, RepoConectado } from '../types'
-import { BINARIO, IGNORAR } from './github'
+import { BINARIO, IGNORAR, SEGREDOS, redigirSegredos } from './github'
 
 // Lê uma pasta local escolhida no navegador (<input webkitdirectory>) e monta
 // um digest textual do projeto — sem enviar nada a lugar nenhum além do
@@ -65,10 +65,17 @@ export async function lerPastaLocal(arquivos: File[]): Promise<PastaLocal> {
   // spinner "Lendo…" pintar e a aba não travar.
   const uteis: Entrada[] = []
   let excedeuTeto = false
+  let omitidosSeguranca = 0
   for (let i = 0; i < arquivos.length; i++) {
     if (i > 0 && i % 5000 === 0) await new Promise((r) => setTimeout(r, 0))
     const path = semRaiz(relativo(arquivos[i]))
     if (path.length === 0 || IGNORAR.test(path) || BINARIO.test(path)) continue
+    // Arquivos sensíveis (.env, chaves, credenciais…) nunca entram no digest —
+    // nem na árvore, nem no conteúdo. O cabeçalho avisa quantos foram omitidos.
+    if (SEGREDOS.test(path)) {
+      omitidosSeguranca += 1
+      continue
+    }
     if (uteis.length >= MAX_UTEIS) {
       excedeuTeto = true
       break
@@ -121,6 +128,9 @@ export async function lerPastaLocal(arquivos: File[]): Promise<PastaLocal> {
   const partes: string[] = [
     `Pasta local: ${nome}`,
     `${uteis.length} arquivos úteis${excedeuTeto ? ` (limitado a ${MAX_UTEIS} — a pasta é enorme; considere selecionar só o código-fonte)` : ''} · Arquivos por tipo: ${estatistica}`,
+    ...(omitidosSeguranca > 0
+      ? [`${omitidosSeguranca} arquivo(s) sensível(is) omitido(s) por segurança (.env, chaves, credenciais…)`]
+      : []),
     '',
     '## Árvore de arquivos',
     arvore,
@@ -138,6 +148,9 @@ export async function lerPastaLocal(arquivos: File[]): Promise<PastaLocal> {
     } catch {
       continue
     }
+    // Redige segredos óbvios ANTES do truncamento e de montar o resumo (que
+    // vai ao localStorage e ao provedor de IA).
+    texto = redigirSegredos(texto)
     const limite = ehReadme(e.path) ? MAX_README : MAX_POR_ARQUIVO
     if (texto.length > limite) texto = texto.slice(0, limite) + '\n… (arquivo truncado)'
     const bloco = `### ${e.path}\n\`\`\`\n${texto}\n\`\`\``

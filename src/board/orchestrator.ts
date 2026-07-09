@@ -10,13 +10,14 @@ import type {
   Placar,
   Reuniao,
   Transporte,
+  UsoTokens,
   Voto,
 } from '../types'
 import type { Plano } from '../types'
 import { MEMBROS_VOTANTES, PRESIDENTE, membroPorId } from './members'
 import { SCHEMA_DEBATE, SCHEMA_PLANO, SCHEMA_RODADA1 } from './schemas'
 import { promptDebate, promptExecucao, promptPlano, promptRodada1, promptSintese } from './prompts'
-import type { ExtrasRodada1 } from './prompts'
+import type { ExtrasRodada1, InfoConsenso } from './prompts'
 import { anexosTextuais, descreveAnexos } from '../lib/anexos'
 
 const CONCORRENCIA = 4
@@ -66,6 +67,19 @@ export function votoDoConsenso(reuniao: Reuniao): Voto | undefined {
   return entradas.length === 1 ? entradas[0][0] : undefined
 }
 
+/** Consenso PLENO: todos 'aprovar' ou todos 'rejeitar'. Unanimidade de
+ *  "aprovar com ressalvas" NÃO encerra — ressalva é pendência a debater. */
+export function consensoPleno(
+  ativos: Membro[],
+  membros: Record<string, EstadoMembro>,
+): 'aprovar' | 'rejeitar' | null {
+  const votos = ativos.map((m) => votoFinalDe(membros[m.id])).filter((v): v is Voto => Boolean(v))
+  if (votos.length < ativos.length) return null
+  const primeiro = votos[0]
+  if (primeiro === 'aprovar_com_ressalvas') return null
+  return votos.every((v) => v === primeiro) ? primeiro : null
+}
+
 export interface OpcoesReuniao {
   config: ConfigReuniao
   transporte: Transporte
@@ -88,6 +102,8 @@ export interface ContextoEntregavel {
   veredito: string
   abortar?: AbortSignal
   anexos?: Anexo[]
+  /** Acumula o uso de tokens (medidor de custo); opcional ao regerar. */
+  onUsage?: (uso: UsoTokens) => void
 }
 
 export async function gerarPlano(ctx: ContextoEntregavel): Promise<Plano> {
@@ -98,8 +114,34 @@ export async function gerarPlano(ctx: ContextoEntregavel): Promise<Plano> {
     membroId: PRESIDENTE.id,
     signal: ctx.abortar,
     anexos: ctx.anexos,
+    onUsage: ctx.onUsage,
   })
   return parseJson<Plano>(texto, 'plano')
+}
+
+/** Contexto para (re)gerar a síntese da Presidente isoladamente. */
+export interface ContextoSintese {
+  config: ConfigReuniao
+  transporte: Transporte
+  personas: Record<string, string>
+  participantes: { membro: Membro; estado: EstadoMembro }[]
+  consenso?: InfoConsenso
+  abortar?: AbortSignal
+  onUsage?: (uso: UsoTokens) => void
+}
+
+export async function gerarSintese(
+  ctx: ContextoSintese,
+  onDelta: (texto: string) => void,
+): Promise<string> {
+  return ctx.transporte.streamada({
+    system: ctx.personas[PRESIDENTE.id] ?? PRESIDENTE.systemPrompt,
+    user: promptSintese(ctx.config.ideia, ctx.participantes, ctx.consenso),
+    proposito: 'sintese',
+    onDelta,
+    signal: ctx.abortar,
+    onUsage: ctx.onUsage,
+  })
 }
 
 export async function gerarPromptExecucao(
@@ -113,6 +155,7 @@ export async function gerarPromptExecucao(
     onDelta,
     signal: ctx.abortar,
     anexos: ctx.anexos,
+    onUsage: ctx.onUsage,
   })
 }
 
@@ -126,6 +169,14 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
 
   const cancelado = () => abortar?.aborted === true
   const persona = (m: Membro) => personas[m.id] ?? m.systemPrompt
+
+  // Medidor de custo: acumula os tokens de todas as chamadas desta reunião.
+  const usoTotal: UsoTokens = { entrada: 0, saida: 0 }
+  const acumulaUso = (u: UsoTokens) => {
+    usoTotal.entrada += u.entrada
+    usoTotal.saida += u.saida
+    if (u.cache) usoTotal.cache = (usoTotal.cache ?? 0) + u.cache
+  }
 
   // Materiais do projeto que acompanham o pitch na rodada de análises
   const extras: ExtrasRodada1 = {
@@ -151,6 +202,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
             membroId: m.id,
             signal: abortar,
             anexos,
+            onUsage: acumulaUso,
           })
           const resultado = parseJson<AnaliseRodada1>(texto, m.nome)
           membros[m.id].rodada1 = resultado
@@ -176,16 +228,6 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
     }
 
     // ── Rodadas de debate ────────────────────────────────────────────────────
-    // Consenso PLENO: todos 'aprovar' ou todos 'rejeitar'. Unanimidade de
-    // "aprovar com ressalvas" NÃO encerra — ressalva é pendência a debater.
-    const consensoPleno = (): 'aprovar' | 'rejeitar' | null => {
-      const votos = ativos.map((m) => votoFinalDe(membros[m.id])).filter((v): v is Voto => Boolean(v))
-      if (votos.length < ativos.length) return null
-      const primeiro = votos[0]
-      if (primeiro === 'aprovar_com_ressalvas') return null
-      return votos.every((v) => v === primeiro) ? primeiro : null
-    }
-
     const maxRodadas = config.ateConsenso ? MAX_RODADAS_CONSENSO : config.rodadasDebate
     let consensoNaRodada: number | undefined
     let consensoVoto: Voto | undefined
@@ -193,7 +235,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
     for (let rodada = 1; rodada <= maxRodadas; rodada++) {
       if (cancelado()) return null
       // No modo consenso, se o pleno já foi atingido não há o que debater.
-      const votoConsenso = config.ateConsenso ? consensoPleno() : null
+      const votoConsenso = config.ateConsenso ? consensoPleno(ativos, membros) : null
       if (votoConsenso) {
         consensoNaRodada = rodada - 1
         consensoVoto = votoConsenso
@@ -222,6 +264,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
               schema: SCHEMA_DEBATE as unknown as Record<string, unknown>,
               membroId: m.id,
               signal: abortar,
+              onUsage: acumulaUso,
             })
             const resultado = parseJson<AnaliseDebate>(texto, m.nome)
             membros[m.id].debate = [...(membros[m.id].debate ?? []), resultado]
@@ -242,7 +285,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
     }
     // Consenso alcançado na última rodada possível: registra também.
     if (config.ateConsenso && consensoNaRodada === undefined) {
-      const votoConsenso = consensoPleno()
+      const votoConsenso = consensoPleno(ativos, membros)
       if (votoConsenso) {
         consensoNaRodada = maxRodadas
         consensoVoto = votoConsenso
@@ -251,33 +294,45 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
     }
     if (cancelado()) return null
 
-    // ── Síntese do Presidente (streamada) ────────────────────────────────────
+    // ── Síntese do Presidente (streamada) — COM CHECKPOINT ───────────────────
+    // Se a síntese falhar, NÃO descartamos as análises e o debate que o usuário
+    // já pagou: montamos a reunião mesmo assim, sinalizamos erroSintese e
+    // deixamos a UI oferecer "gerar síntese novamente".
     eventos.onFase('sintese')
     eventos.onStatusMembro(PRESIDENTE.id, 'analisando')
-    const veredito = await transporte.streamada({
-      system: personas[PRESIDENTE.id] ?? PRESIDENTE.systemPrompt,
-      user: promptSintese(
-        config.ideia,
-        ativos.map((m) => ({ membro: m, estado: membros[m.id] })),
-        config.ateConsenso
-          ? {
-              alcancado: consensoNaRodada !== undefined,
-              rodada: consensoNaRodada,
-              voto: consensoVoto,
-              maxRodadas: MAX_RODADAS_CONSENSO,
-            }
-          : undefined,
-      ),
-      proposito: 'sintese',
-      onDelta: (t) => {
-        if (!cancelado()) eventos.onVereditoDelta(t)
-      },
-      signal: abortar,
-    })
+    let veredito = ''
+    let erroSintese: string | undefined
+    try {
+      veredito = await gerarSintese(
+        {
+          config,
+          transporte,
+          personas,
+          participantes: ativos.map((m) => ({ membro: m, estado: membros[m.id] })),
+          consenso: config.ateConsenso
+            ? {
+                alcancado: consensoNaRodada !== undefined,
+                rodada: consensoNaRodada,
+                voto: consensoVoto,
+                maxRodadas: MAX_RODADAS_CONSENSO,
+              }
+            : undefined,
+          abortar,
+          onUsage: acumulaUso,
+        },
+        (t) => {
+          if (!cancelado()) eventos.onVereditoDelta(t)
+        },
+      )
+    } catch (err) {
+      if (cancelado()) return null
+      erroSintese = err instanceof Error ? err.message : String(err)
+      eventos.onErroSintese(erroSintese)
+    }
     if (cancelado()) return null
-    eventos.onStatusMembro(PRESIDENTE.id, 'pronto')
+    eventos.onStatusMembro(PRESIDENTE.id, erroSintese ? 'erro' : 'pronto')
 
-    // ── Entregáveis (opcionais e NÃO-fatais: falha aqui não perde a reunião) ─
+    // ── Entregáveis (opcionais e NÃO-fatais) — só se a síntese saiu ──────────
     const ctxEntregavel: ContextoEntregavel = {
       config,
       transporte,
@@ -286,11 +341,12 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
       veredito,
       abortar,
       anexos,
+      onUsage: acumulaUso,
     }
 
     // Plano detalhado (documento visual/PDF — estruturado)
     let plano: Plano | undefined
-    if (config.gerarPlano) {
+    if (config.gerarPlano && !erroSintese) {
       eventos.onFase('plano')
       eventos.onStatusMembro(PRESIDENTE.id, 'analisando')
       try {
@@ -306,7 +362,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
 
     // Prompt de execução para agentes de programação (streamado)
     let promptExec: string | undefined
-    if (config.gerarPrompt) {
+    if (config.gerarPrompt && !erroSintese) {
       eventos.onFase('prompt')
       eventos.onStatusMembro(PRESIDENTE.id, 'analisando')
       try {
@@ -321,6 +377,7 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
       eventos.onStatusMembro(PRESIDENTE.id, 'pronto')
     }
 
+    const temUso = usoTotal.entrada > 0 || usoTotal.saida > 0
     const reuniao: Reuniao = {
       id: `reuniao-${Date.now()}`,
       data: new Date().toISOString(),
@@ -333,6 +390,8 @@ export async function conduzirReuniao(opcoes: OpcoesReuniao): Promise<Reuniao | 
       fase: 'concluida',
       consensoNaRodada,
       consensoVoto,
+      usoTokens: temUso ? usoTotal : undefined,
+      erroSintese: erroSintese ? true : undefined,
     }
     eventos.onFase('concluida')
     eventos.onConcluida(reuniao)

@@ -44,6 +44,10 @@ export function VerdictPanel({ veredito, streamando, reuniao }: Props) {
           <button onClick={() => exportaJson(reuniao)}>⬇︎ Exportar JSON</button>
         </div>
       )}
+      {/* Disclaimer no ponto de consumo (pedido da Dra. Renata) */}
+      <p className="campo-dica">
+        Conteúdo gerado por IA — não é aconselhamento jurídico ou financeiro; valide de forma independente.
+      </p>
     </section>
   )
 }

@@ -26,6 +26,68 @@ export const IGNORAR =
 export const BINARIO =
   /\.(png|jpe?g|gif|webp|svg|ico|bmp|woff2?|ttf|eot|otf|mp[34]|wav|webm|mov|avi|zip|gz|tar|rar|7z|jar|pdf|lock|exe|dll|so|dylib|bin|dat|wasm|class|pyc)$/i
 
+// ---------------------------------------------------------------------------
+// Proteção anti-segredo (compartilhada com src/lib/pastaLocal.ts).
+// O digest vai ao localStorage e ao provedor de IA — arquivos sensíveis ficam
+// FORA da árvore e do conteúdo, e padrões óbvios de credencial são redigidos
+// de todo texto incluído.
+
+/** Nomes/caminhos que denunciam segredos — nunca entram no digest.
+ *  Ancorada em nome/extensão completos para evitar falsos positivos
+ *  (ex.: "keyboard.ts" NÃO casa com *.key). Sem flag `g` de propósito:
+ *  é usada com .test() e não pode carregar lastIndex entre chamadas. */
+export const SEGREDOS = new RegExp(
+  [
+    // .env e variantes (.env.local, .env.production, .envrc, prod.env…) —
+    // exceto templates sem segredo real (.env.example/sample/template)
+    '(^|/)\\.env(rc)?(\\.(?!example$|sample$|template$)[^/]+)?$',
+    '(^|/)[^/]+\\.env$',
+    // qualquer segmento do caminho contendo secret/credential/keystore
+    '(^|/)[^/]*(secret|credential|keystore)[^/]*(/|$)',
+    // chaves, certificados e variáveis do Terraform, por extensão completa
+    '\\.(pem|key|p12|pfx|tfvars|tfvars\\.json)$',
+    // chaves SSH
+    '(^|/)id_(rsa|ed25519|ecdsa|dsa)[^/]*$',
+    // arquivos clássicos de credenciais
+    '(^|/)(\\.npmrc|\\.netrc|\\.git-credentials|\\.htpasswd)$',
+    // diretórios sensíveis
+    '(^|/)\\.(aws|kube)(/|$)',
+  ].join('|'),
+  'i',
+)
+
+/** Fichas de API com prefixo reconhecível (OpenAI/Anthropic, AWS, GitHub, Slack). */
+const FICHA_OBVIA =
+  /\b(sk-[A-Za-z0-9_-]{8,}|AKIA[A-Z0-9]{16}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,})/g
+
+/** Blocos PEM de chave privada (inclusive truncados no fim do texto). */
+const BLOCO_CHAVE_PRIVADA =
+  /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?(-----END [A-Z0-9 ]*PRIVATE KEY-----|$)/g
+
+/** Pares chave/valor cujo nome denuncia credencial (password: "…", TOKEN=…). */
+const PAR_SENSIVEL =
+  /([A-Za-z0-9_.-]*(?:password|passwd|senha|token|secret|api[_-]?key)[A-Za-z0-9_-]*["']?\s*[:=]\s*)("[^"\r\n]{1,256}"|'[^'\r\n]{1,256}'|[^\s"'`,;]{1,256})/gi
+
+/** Valores que não são segredo (anotações de tipo, referências a env etc.) —
+ *  evita mutilar código-fonte comum como `token: string`. */
+const VALOR_INOFENSIVO =
+  /^(string|number|boolean|object|any|unknown|bytes|str|int|float|bool|null|none|nil|undefined|true|false|await|new|this|self|\$.*|process\.env\.[A-Za-z0-9_]+|os\.environ.*|\[REDIGIDO\])$/i
+
+/** Redige padrões óbvios de segredo de um texto ANTES de ele entrar no
+ *  digest (que é persistido no localStorage e enviado ao provedor de IA).
+ *  Redação leve: preserva a chave e substitui só o valor por [REDIGIDO]. */
+export function redigirSegredos(texto: string): string {
+  return texto
+    .replace(BLOCO_CHAVE_PRIVADA, '[CHAVE PRIVADA REDIGIDA]')
+    .replace(FICHA_OBVIA, '[REDIGIDO]')
+    .replace(PAR_SENSIVEL, (tudo, chave: string, valor: string) => {
+      const aspas = valor[0] === '"' || valor[0] === "'" ? valor[0] : ''
+      const bruto = aspas ? valor.slice(1, -1) : valor
+      if (VALOR_INOFENSIVO.test(bruto)) return tudo
+      return `${chave}${aspas}[REDIGIDO]${aspas}`
+    })
+}
+
 /** Aceita URL completa ou "dono/repo". */
 export function parseRepo(entrada: string): { owner: string; repo: string } | null {
   const limpa = entrada.trim().replace(/\.git$/, '').replace(/\/+$/, '')
@@ -88,13 +150,23 @@ export async function lerRepositorio(
   // 2. Árvore de arquivos (recursiva) — filtra ruído e limita o tamanho
   let arvoreTexto = '(não foi possível ler a árvore de arquivos)'
   let estatistica = ''
+  let omitidosSeguranca = 0
   try {
     const arvore = (await (
       await gh(`/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`, token)
     ).json()) as { tree: ItemArvore[]; truncated: boolean }
-    const arquivos = arvore.tree.filter(
+    const candidatos = arvore.tree.filter(
       (i) => i.type === 'blob' && !IGNORAR.test(i.path) && !BINARIO.test(i.path),
     )
+    // Arquivos sensíveis (.env, chaves, credenciais…) ficam fora da árvore e
+    // do conteúdo — e o cabeçalho avisa quantos foram omitidos.
+    const arquivos = candidatos.filter((i) => {
+      if (SEGREDOS.test(i.path)) {
+        omitidosSeguranca += 1
+        return false
+      }
+      return true
+    })
     const porExtensao = new Map<string, number>()
     for (const a of arquivos) {
       const ext = a.path.includes('.') ? a.path.slice(a.path.lastIndexOf('.')) : '(sem extensão)'
@@ -114,24 +186,29 @@ export async function lerRepositorio(
     // árvore é opcional — segue com o resto
   }
 
-  // 3. README
+  // 3. README (com redação de segredos ANTES do truncamento)
   let readme = ''
   try {
-    readme = await (
-      await gh(`/repos/${owner}/${repo}/readme`, token, 'application/vnd.github.raw+json')
-    ).text()
+    readme = redigirSegredos(
+      await (
+        await gh(`/repos/${owner}/${repo}/readme`, token, 'application/vnd.github.raw+json')
+      ).text(),
+    )
     if (readme.length > MAX_README) readme = readme.slice(0, MAX_README) + '\n… (README truncado)'
   } catch {
     readme = '(sem README)'
   }
 
-  // 4. Arquivos-chave (manifestos de dependências)
+  // 4. Arquivos-chave (manifestos de dependências) — redação uniforme: barato
+  // e garante que nenhum segredo colado ali por engano vaze no digest.
   const chaves: string[] = []
   for (const nome of ARQUIVOS_CHAVE) {
     try {
-      const conteudo = await (
-        await gh(`/repos/${owner}/${repo}/contents/${nome}`, token, 'application/vnd.github.raw+json')
-      ).text()
+      const conteudo = redigirSegredos(
+        await (
+          await gh(`/repos/${owner}/${repo}/contents/${nome}`, token, 'application/vnd.github.raw+json')
+        ).text(),
+      )
       chaves.push(
         `### ${nome}\n${conteudo.length > MAX_ARQUIVO_CHAVE ? conteudo.slice(0, MAX_ARQUIVO_CHAVE) + '\n…' : conteudo}`,
       )
@@ -143,10 +220,13 @@ export async function lerRepositorio(
 
   let resumo = [
     `Repositório: ${meta.full_name} (branch ${branch})`,
-    meta.description ? `Descrição: ${meta.description}` : '',
+    meta.description ? `Descrição: ${redigirSegredos(meta.description)}` : '',
     meta.language ? `Linguagem principal: ${meta.language}` : '',
     `Último push: ${meta.pushed_at?.slice(0, 10) ?? '?'} · Estrelas: ${meta.stargazers_count}`,
     estatistica ? `Arquivos por tipo: ${estatistica}` : '',
+    omitidosSeguranca > 0
+      ? `${omitidosSeguranca} arquivo(s) sensível(is) omitido(s) por segurança (.env, chaves, credenciais…)`
+      : '',
     '',
     '## Árvore de arquivos',
     arvoreTexto,

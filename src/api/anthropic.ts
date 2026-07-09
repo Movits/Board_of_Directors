@@ -1,5 +1,23 @@
 import Anthropic from '@anthropic-ai/sdk'
-import type { Anexo, Transporte } from '../types'
+import type { Anexo, Transporte, UsoTokens } from '../types'
+
+/** Timeout por chamada: um provedor travado (local/custom) nunca prende a
+ *  reunião para sempre. Combinado com o signal do usuário via AbortSignal.any. */
+const TIMEOUT_CHAMADA_MS = 120_000
+
+function comTimeout(signal: AbortSignal | undefined): AbortSignal {
+  const t = AbortSignal.timeout(TIMEOUT_CHAMADA_MS)
+  return signal ? AbortSignal.any([signal, t]) : t
+}
+
+function reportaUso(onUsage: ((u: UsoTokens) => void) | undefined, usage: Anthropic.Usage | undefined) {
+  if (!onUsage || !usage) return
+  onUsage({
+    entrada: usage.input_tokens ?? 0,
+    saida: usage.output_tokens ?? 0,
+    cache: usage.cache_read_input_tokens ?? undefined,
+  })
+}
 
 export const MODELOS_ANTHROPIC = [
   { id: 'claude-opus-4-8', rotulo: 'Claude Opus 4.8', detalhe: 'máxima qualidade (~US$1–2 por reunião)' },
@@ -93,7 +111,7 @@ export function criaTransporteAnthropic(apiKey: string, modelo: string): Transpo
   const thinking = suportaAdaptive(modelo) ? ({ type: 'adaptive' } as const) : undefined
 
   return {
-    async estruturada({ system, user, schema, signal, anexos }) {
+    async estruturada({ system, user, schema, signal, anexos, onUsage }) {
       try {
         const stream = client.messages.stream(
           {
@@ -104,15 +122,17 @@ export function criaTransporteAnthropic(apiKey: string, modelo: string): Transpo
             output_config: { format: { type: 'json_schema', schema: schema as Record<string, unknown> } },
             messages: [{ role: 'user', content: montaConteudo(user, anexos) }],
           },
-          { signal },
+          { signal: comTimeout(signal) },
         )
-        return extraiTexto(await stream.finalMessage())
+        const mensagem = await stream.finalMessage()
+        reportaUso(onUsage, mensagem.usage)
+        return extraiTexto(mensagem)
       } catch (err) {
         throw traduzErro(err)
       }
     },
 
-    async streamada({ system, user, onDelta, signal, anexos }) {
+    async streamada({ system, user, onDelta, signal, anexos, onUsage }) {
       try {
         const stream = client.messages.stream(
           {
@@ -122,10 +142,12 @@ export function criaTransporteAnthropic(apiKey: string, modelo: string): Transpo
             ...(thinking ? { thinking } : {}),
             messages: [{ role: 'user', content: montaConteudo(user, anexos) }],
           },
-          { signal },
+          { signal: comTimeout(signal) },
         )
         stream.on('text', (delta) => onDelta(delta))
-        return extraiTexto(await stream.finalMessage())
+        const mensagem = await stream.finalMessage()
+        reportaUso(onUsage, mensagem.usage)
+        return extraiTexto(mensagem)
       } catch (err) {
         throw traduzErro(err)
       }

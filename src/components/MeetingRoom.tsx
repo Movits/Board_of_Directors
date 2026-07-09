@@ -6,12 +6,15 @@ import {
   calculaPlacar,
   gerarPlano,
   gerarPromptExecucao,
+  gerarSintese,
   votoDoConsenso,
   MAX_RODADAS_CONSENSO,
   type ContextoEntregavel,
+  type ContextoSintese,
 } from '../board/orchestrator'
 import { personaEfetiva } from '../board/prompts'
 import { criaTransporte } from '../api'
+import { custoUsd, formataUsd } from '../api/precos'
 import { criaTransporteDemo } from '../board/demo'
 import { resumoDeCodigo } from '../lib/pastaLocal'
 import {
@@ -79,9 +82,13 @@ interface EstadoUI {
   /** Falha na geração de um entregável (a reunião continua válida). */
   erroPlano?: string
   erroPrompt?: string
-  regerando?: 'plano' | 'prompt'
+  /** A síntese falhou — análises e debate foram preservados; dá para regerar. */
+  erroSintese?: string
+  regerando?: 'plano' | 'prompt' | 'sintese'
   /** localStorage estourou ao salvar a reunião concluída — precisa avisar. */
   falhouSalvar?: boolean
+  /** Reunião interrompida manualmente pelo usuário. */
+  interrompida?: boolean
 }
 
 function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
@@ -96,6 +103,7 @@ function estadoInicial(config: ConfigReuniao, existente?: Reuniao): EstadoUI {
       plano: existente.plano,
       consensoNaRodada: existente.consensoNaRodada,
       consensoVoto: existente.consensoVoto ?? votoDoConsenso(existente),
+      erroSintese: existente.erroSintese ? 'A síntese não foi gerada nesta reunião.' : undefined,
       reuniao: existente,
     }
   }
@@ -135,19 +143,23 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
     [projeto, config.pauta, config.projetoId],
   )
 
-  useEffect(() => {
-    if (existente || iniciadaRef.current) return
-    iniciadaRef.current = true // evita reexecução no StrictMode do React
-
-    const abort = new AbortController()
-    abortRef.current = abort
-    const transporte = config.demo
+  // Transporte (real ou demo) — reusado pela reunião e pelas regenerações.
+  const montaTransporte = () =>
+    config.demo
       ? criaTransporteDemo()
       : criaTransporte(config.provedor, {
           apiKey: leChave(config.provedor),
           modelo: config.modelo,
           baseUrl: config.provedor === 'anthropic' ? undefined : leBaseUrlDe(config.provedor),
         })
+
+  useEffect(() => {
+    if (existente || iniciadaRef.current) return
+    iniciadaRef.current = true // evita reexecução no StrictMode do React
+
+    const abort = new AbortController()
+    abortRef.current = abort
+    const transporte = montaTransporte()
 
     conduzirReuniao({
       config,
@@ -203,6 +215,7 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
         onConsenso: (rodada, voto) =>
           setEstado((e) => ({ ...e, consensoNaRodada: rodada, consensoVoto: voto })),
         onVereditoDelta: (texto) => setEstado((e) => ({ ...e, veredito: e.veredito + texto })),
+        onErroSintese: (mensagem) => setEstado((e) => ({ ...e, erroSintese: mensagem })),
         onPlano: (plano) => setEstado((e) => ({ ...e, plano })),
         onPromptDelta: (texto) =>
           setEstado((e) => ({ ...e, promptExecucao: e.promptExecucao + texto })),
@@ -228,15 +241,77 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /** Participantes (com análise) reconstruídos do estado atual — para regerar. */
+  const participantesComAnalise = () =>
+    MEMBROS_VOTANTES.filter((m) => estado.membros[m.id]?.rodada1).map((m) => ({
+      membro: m,
+      estado: estado.membros[m.id],
+    }))
+
+  /** Regenera a síntese quando ela falhou — as análises e o debate já estavam
+   *  salvos, então aqui só refazemos o veredito (e os entregáveis, se pedidos). */
+  const regerarSintese = async () => {
+    const transporte = montaTransporte()
+    const personas = montaPersonas()
+    const participantes = participantesComAnalise()
+    const ctxSintese: ContextoSintese = {
+      config,
+      transporte,
+      personas,
+      participantes,
+      consenso: config.ateConsenso
+        ? {
+            alcancado: estado.consensoNaRodada !== undefined,
+            rodada: estado.consensoNaRodada,
+            voto: estado.consensoVoto,
+            maxRodadas: MAX_RODADAS_CONSENSO,
+          }
+        : undefined,
+    }
+    setEstado((e) => ({ ...e, regerando: 'sintese', erroSintese: undefined, veredito: '' }))
+    try {
+      const veredito = await gerarSintese(ctxSintese, (t) =>
+        setEstado((e) => ({ ...e, veredito: e.veredito + t })),
+      )
+      let reuniao = estado.reuniao ? { ...estado.reuniao, veredito, erroSintese: undefined } : undefined
+      // Gera os entregáveis que haviam sido pulados quando a síntese falhou.
+      const ctxEnt: ContextoEntregavel = { config, transporte, personas, participantes, veredito, anexos }
+      if (config.gerarPlano) {
+        try {
+          const plano = await gerarPlano(ctxEnt)
+          reuniao = reuniao ? { ...reuniao, plano } : undefined
+          setEstado((e) => ({ ...e, plano }))
+        } catch (err) {
+          setEstado((e) => ({ ...e, erroPlano: err instanceof Error ? err.message : String(err) }))
+        }
+      }
+      if (config.gerarPrompt) {
+        try {
+          const promptExecucao = await gerarPromptExecucao(ctxEnt, (t) =>
+            setEstado((e) => ({ ...e, promptExecucao: e.promptExecucao + t })),
+          )
+          reuniao = reuniao ? { ...reuniao, promptExecucao } : undefined
+        } catch (err) {
+          setEstado((e) => ({ ...e, erroPrompt: err instanceof Error ? err.message : String(err) }))
+        }
+      }
+      if (reuniao) gravaReuniao(reuniao)
+      setEstado((e) => ({ ...e, reuniao: reuniao ?? e.reuniao, regerando: undefined, erroSintese: undefined }))
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setEstado((e) => ({ ...e, erroSintese: msg, regerando: undefined }))
+    }
+  }
+
+  /** Interrompe uma reunião em andamento (aborta as chamadas em curso). */
+  const interromperReuniao = () => {
+    abortRef.current?.abort()
+    setEstado((e) => ({ ...e, fase: 'erro', interrompida: true }))
+  }
+
   /** Refaz só a chamada do entregável que falhou e atualiza a reunião salva. */
   const regerarEntregavel = async (tipo: 'plano' | 'prompt') => {
-    const transporte = config.demo
-      ? criaTransporteDemo()
-      : criaTransporte(config.provedor, {
-          apiKey: leChave(config.provedor),
-          modelo: config.modelo,
-          baseUrl: config.provedor === 'anthropic' ? undefined : leBaseUrlDe(config.provedor),
-        })
+    const transporte = montaTransporte()
     const ctxRegerar: ContextoEntregavel = {
       config,
       transporte,
@@ -286,6 +361,10 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
   const placar = calculaPlacar(estado.membros)
   const totalVotos = placar.aprovar + placar.aprovar_com_ressalvas + placar.rejeitar
   const emAndamento = !existente && estado.fase !== 'concluida' && estado.fase !== 'erro'
+  // Custo real: só quando há tokens medidos E preço conhecido do modelo (nunca no demo).
+  const uso = estado.reuniao?.usoTokens
+  const custo = uso ? custoUsd(config.modelo, uso) : undefined
+  const custoDaReuniao = !config.demo && custo !== undefined ? formataUsd(custo) : undefined
 
   return (
     <div className="sala">
@@ -306,11 +385,27 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
           gerarPlano={config.gerarPlano ?? false}
           gerarPrompt={config.gerarPrompt ?? false}
         />
+        {emAndamento && (
+          <button
+            className="botao-secundario botao-compacto sala-interromper"
+            onClick={interromperReuniao}
+            title="Parar as chamadas de IA em andamento"
+          >
+            ⏹ Interromper reunião
+          </button>
+        )}
       </div>
 
       {estado.erro && (
         <div className="aviso aviso-erro">
           <strong>A reunião foi interrompida:</strong> {estado.erro}
+        </div>
+      )}
+
+      {estado.interrompida && (
+        <div className="aviso aviso-erro">
+          <strong>Reunião interrompida por você.</strong> As chamadas de IA em andamento foram
+          canceladas. Comece uma nova reunião quando quiser.
         </div>
       )}
 
@@ -381,11 +476,34 @@ export function MeetingRoom({ config, existente, aoNovaReuniao, aoVerProjeto }: 
 
         <aside className="painel-lateral">
           <VoteTally placar={placar} total={participantes.length} votaram={totalVotos} />
-          <VerdictPanel
-            veredito={estado.veredito}
-            streamando={estado.fase === 'sintese'}
-            reuniao={estado.reuniao}
-          />
+          {custoDaReuniao && (
+            <p className="sala-custo" title="Estimativa a partir dos tokens realmente consumidos">
+              💵 Esta reunião custou <strong>≈ {custoDaReuniao}</strong> em uso de API.
+            </p>
+          )}
+          {estado.erroSintese && !emAndamento ? (
+            <section className="painel-plano">
+              <h3>📋 Síntese da Presidente</h3>
+              <p className="painel-plano-nota painel-erro-nota">
+                ⚠️ A síntese falhou ({estado.erroSintese}). As análises e o debate dos conselheiros
+                foram <strong>salvos</strong> — nada do que você pagou se perdeu. Gere a síntese
+                novamente para concluir o veredito e os entregáveis.
+              </p>
+              <button
+                className="botao-principal botao-compacto"
+                onClick={regerarSintese}
+                disabled={estado.regerando === 'sintese'}
+              >
+                {estado.regerando === 'sintese' ? 'Gerando…' : '↻ Gerar síntese novamente'}
+              </button>
+            </section>
+          ) : (
+            <VerdictPanel
+              veredito={estado.veredito}
+              streamando={estado.fase === 'sintese' || estado.regerando === 'sintese'}
+              reuniao={estado.reuniao}
+            />
+          )}
           {(estado.plano || estado.fase === 'plano' || estado.erroPlano) && (
             <section className="painel-plano">
               <h3>📄 Plano detalhado</h3>

@@ -2,6 +2,14 @@ export type Voto = 'aprovar' | 'aprovar_com_ressalvas' | 'rejeitar'
 
 export type Provedor = 'anthropic' | 'openai' | 'custom'
 
+/** Tokens consumidos por chamadas ao modelo — base do medidor de custo real. */
+export interface UsoTokens {
+  entrada: number
+  saida: number
+  /** Tokens de entrada lidos do cache (subconjunto de `entrada`, quando reportado). */
+  cache?: number
+}
+
 // ── Projetos: a "mini empresa" — reuniões contínuas sobre o mesmo projeto ────
 
 export type TipoAnexo = 'imagem' | 'pdf' | 'texto'
@@ -204,6 +212,12 @@ export interface Reuniao {
   /** Voto do consenso pleno ('aprovar' | 'rejeitar'). Ausente em reuniões
    *  antigas (regra anterior aceitava unanimidade de ressalvas) ou sem consenso. */
   consensoVoto?: Voto
+  /** Tokens consumidos na reunião (para exibir o custo real). Ausente no demo
+   *  e em reuniões antigas anteriores ao medidor. */
+  usoTokens?: UsoTokens
+  /** A síntese da Presidente falhou: a reunião foi salva com as análises e o
+   *  debate (que o usuário já pagou), mas o veredito precisa ser regerado. */
+  erroSintese?: boolean
 }
 
 export interface EventosReuniao {
@@ -214,6 +228,8 @@ export interface EventosReuniao {
   onConsenso: (rodada: number, voto: Voto) => void
   onDebateFalhou: (membroId: string, rodada: number) => void
   onVereditoDelta: (texto: string) => void
+  /** A síntese falhou — mas as análises e o debate foram preservados. */
+  onErroSintese: (mensagem: string) => void
   onPlano: (plano: Plano) => void
   onPromptDelta: (texto: string) => void
   /** Falha na geração de um entregável — NÃO derruba a reunião. */
@@ -233,6 +249,8 @@ export interface Transporte {
     signal?: AbortSignal
     /** Anexos multimodais (imagens/PDF) enviados junto com a mensagem. */
     anexos?: Anexo[]
+    /** Reporta os tokens consumidos (medidor de custo). O demo nunca chama. */
+    onUsage?: (uso: UsoTokens) => void
   }): Promise<string>
   /** Chamada streamada em texto/markdown (síntese e prompt de execução). */
   streamada(params: {
@@ -242,5 +260,6 @@ export interface Transporte {
     onDelta: (texto: string) => void
     signal?: AbortSignal
     anexos?: Anexo[]
+    onUsage?: (uso: UsoTokens) => void
   }): Promise<string>
 }

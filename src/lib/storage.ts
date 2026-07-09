@@ -248,3 +248,61 @@ export const leGithubToken = (): string => le(CHAVES.githubToken, '')
 export const gravaGithubToken = (v: string): void => {
   grava(CHAVES.githubToken, v)
 }
+
+// ── Exportação e limpeza dos dados locais (Configurações + tela de erro) ─────
+
+/** Prefixo comum de todas as chaves deste app no localStorage. */
+const PREFIXO_BOD = 'bod.'
+
+/** Lista as chaves bod.* presentes no localStorage neste momento. */
+function chavesBod(): string[] {
+  const encontradas: string[] = []
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const chave = localStorage.key(i)
+      if (chave && chave.startsWith(PREFIXO_BOD)) encontradas.push(chave)
+    }
+  } catch {
+    // localStorage indisponível: nada a listar
+  }
+  return encontradas
+}
+
+/** JSON legível com TODAS as chaves bod.* — backup manual / escape hatch da
+ *  tela de erro. Valores tortos (que não parseiam) saem como texto cru. */
+export function exportaDadosLocais(): string {
+  const dados: Record<string, unknown> = {}
+  for (const chave of chavesBod()) {
+    const bruto = localStorage.getItem(chave)
+    try {
+      dados[chave] = bruto === null ? null : JSON.parse(bruto)
+    } catch {
+      dados[chave] = bruto
+    }
+  }
+  return JSON.stringify(dados, null, 2)
+}
+
+/** Remove só as credenciais: chaves de API (inclusive a legada) e token do
+ *  GitHub. Projetos, reuniões e demais dados ficam intactos. */
+export function limpaChaves(): void {
+  try {
+    localStorage.removeItem(CHAVES.chavesApi)
+    localStorage.removeItem(CHAVES.apiKeyLegada)
+    localStorage.removeItem(CHAVES.githubToken)
+  } catch {
+    // localStorage indisponível: não há o que limpar
+  }
+}
+
+/** Remove TODAS as chaves bod.* deste navegador — apaga projetos, reuniões,
+ *  feedback, personas e credenciais. Irreversível. */
+export function limpaTudo(): void {
+  for (const chave of chavesBod()) {
+    try {
+      localStorage.removeItem(chave)
+    } catch {
+      // segue tentando as demais
+    }
+  }
+}

@@ -2,7 +2,7 @@ name: Deploy no GitHub Pages
 
 on:
   push:
-    branches: [main, claude/board-of-directors-agents-roymtr]
+    branches: [claude/board-of-directors-agents-roymtr]
   workflow_dispatch:
 
 permissions:
@@ -17,6 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,6 +25,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Gate de qualidade: código com testes quebrados nunca chega ao Pages
+      - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -32,6 +35,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
