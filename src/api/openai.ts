@@ -1,6 +1,10 @@
 import OpenAI from 'openai'
 import type { Anexo, Transporte, UsoTokens } from '../types'
 
+// Lista de modelos em ./modelos (dados puros) — evita puxar o SDK 'openai'
+// para o bundle da home. Re-exportada por compatibilidade.
+export { MODELOS_OPENAI } from './modelos'
+
 /** Timeout por chamada: um provedor local/custom travado não prende a reunião. */
 const TIMEOUT_CHAMADA_MS = 120_000
 
@@ -20,12 +24,6 @@ function reportaUso(
     cache: usage.prompt_tokens_details?.cached_tokens ?? undefined,
   })
 }
-
-export const MODELOS_OPENAI = [
-  { id: 'gpt-5.5', rotulo: 'GPT-5.5', detalhe: 'modelo mais capaz da OpenAI' },
-  { id: 'gpt-5.4', rotulo: 'GPT-5.4', detalhe: 'equilíbrio entre qualidade e custo' },
-  { id: 'gpt-5.4-mini', rotulo: 'GPT-5.4 mini', detalhe: 'rápido e barato' },
-]
 
 function traduzErro(err: unknown): Error {
   if (err instanceof OpenAI.AuthenticationError) {

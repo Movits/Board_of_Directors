@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Anexo, ConfigReuniao, PastaLocal, RepoConectado } from '../types'
+import type { Anexo, ConfigReuniao, PastaLocal, Provedor, RepoConectado } from '../types'
 import { MEMBROS_VOTANTES } from '../board/members'
 import { infoProvedor } from '../api'
+import { estimaCustoUsd, formataFaixaUsd } from '../api/precos'
+import { LINKS_USO_DADOS } from '../api/usoDados'
 import {
   gravaGithubToken,
   gravaProjeto,
@@ -13,6 +15,7 @@ import {
   leModelosDescobertos,
   leProvedor,
   leRascunho,
+  leTetoGastoUsd,
   nomeDeProjeto,
 } from '../lib/storage'
 import {
@@ -26,6 +29,7 @@ import { lerRepositorio, parseRepo } from '../lib/github'
 import { lerPastaLocal } from '../lib/pastaLocal'
 import { promptParaClaudeCode } from '../board/claudeCode'
 import { ClaudeCodePanel } from './ClaudeCodePanel'
+import { ModalTeto } from './ModalTeto'
 
 interface Props {
   aoConvocar: (config: ConfigReuniao) => void
@@ -33,6 +37,29 @@ interface Props {
 }
 
 type ModoDebate = '1' | '2' | '3' | 'consenso'
+
+/** Ideia curada da "reunião de exemplo": 1 clique → payoff, sem digitar. */
+const IDEIA_EXEMPLO =
+  'App de assinatura de café artesanal com curadoria mensal e entrega recorrente'
+
+/** Aviso passivo e uniforme de saída de dados — mostrado junto de cada controle
+ *  que envia conteúdo à IA (anexos, repositório, pasta local). Não é modal. */
+function AvisoEgresso({ provedor }: { provedor: Provedor }) {
+  const link = LINKS_USO_DADOS[provedor]
+  return (
+    <span className="campo-dica aviso-egresso">
+      🔒 O conteúdo sai do seu navegador direto para o provedor de IA na análise —{' '}
+      {link.url ? (
+        <a href={link.url} target="_blank" rel="noreferrer">
+          {link.rotulo}
+        </a>
+      ) : (
+        link.rotulo
+      )}
+      . Com <strong>Rodar no Claude Code</strong>, nem isso — fica tudo local.
+    </span>
+  )
+}
 
 export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
   const provedor = leProvedor()
@@ -81,6 +108,12 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
   const [pastaLocal, setPastaLocal] = useState<PastaLocal | null>(null)
   const [lendoPasta, setLendoPasta] = useState(false)
   const [erroPasta, setErroPasta] = useState('')
+
+  // Gate de teto de gasto (só no caminho caro): quando a estimativa máxima em
+  // US$ passa do teto, confirma antes de gastar. Guarda o "prosseguir" pendente.
+  const [tetoAberto, setTetoAberto] = useState<{ estimativaTexto: string; prosseguir: () => void } | null>(
+    null,
+  )
 
   // O atributo webkitdirectory não é tipado no React — setamos via DOM.
   useEffect(() => {
@@ -181,25 +214,38 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
   // Estimativa de chamadas: N análises + N por rodada de debate + síntese + entregáveis
   const entregaveis = (gerarPlano ? 1 : 0) + (gerarPrompt ? 1 : 0)
   const chamadas = (rodadas: number) => selecionados.size * (1 + rodadas) + 1 + entregaveis
+  const anexosPesados = anexos.filter((a) => a.tipo !== 'texto').length
   const notaAnexos =
-    !demo && anexos.some((a) => a.tipo !== 'texto')
-      ? ' Imagens/PDF anexados encarecem cada análise.'
+    !demo && anexosPesados > 0
+      ? ` Cada imagem/PDF vai para os ${selecionados.size} conselheiros em CADA rodada — é o que mais encarece.`
       : ''
+  // Faixa em US$ (passiva — nunca um gate): só no caminho pago e com modelo de
+  // preço conhecido. Modelo custom/local sem preço mostra só a contagem.
+  const faixaUsdTexto = (() => {
+    if (demo) return ''
+    if (modoDebate === 'consenso') {
+      const fMin = estimaCustoUsd({ modelo: modeloFinal, chamadas: chamadas(0), anexos: anexos.length })
+      const fMax = estimaCustoUsd({ modelo: modeloFinal, chamadas: chamadas(5), anexos: anexos.length })
+      return fMin && fMax ? ` · ${formataFaixaUsd({ min: fMin.min, max: fMax.max })}` : ''
+    }
+    const f = estimaCustoUsd({ modelo: modeloFinal, chamadas: chamadas(Number(modoDebate)), anexos: anexos.length })
+    return f ? ` · ${formataFaixaUsd(f)}` : ''
+  })()
   const estimativa = demo
     ? 'Modo demonstração: nenhuma chamada de IA será feita — tudo é simulado, sem custo.'
     : modoDebate === 'consenso'
-      ? `Esta configuração fará entre ${chamadas(0)} e ${chamadas(5)} chamadas de IA — o consenso pode vir logo ou levar até 5 rodadas.${notaAnexos}`
-      : `Esta configuração fará ~${chamadas(Number(modoDebate))} chamadas de IA.${notaAnexos}`
+      ? `≈ entre ${chamadas(0)} e ${chamadas(5)} chamadas de IA${faixaUsdTexto} — o consenso pode vir logo ou levar até 5 rodadas.${notaAnexos}`
+      : `≈ ${chamadas(Number(modoDebate))} chamadas de IA${faixaUsdTexto}.${notaAnexos}`
 
-  const convocar = () => {
+  const executaConvocacao = (ideiaEfetiva: string, demoEfetivo: boolean) => {
     const agora = new Date().toISOString()
     const projetoId = `projeto-${Date.now()}`
     const gravado = gravaProjeto({
       id: projetoId,
-      nome: nomeDeProjeto(ideia),
+      nome: nomeDeProjeto(ideiaEfetiva),
       criadoEm: agora,
       atualizadoEm: agora,
-      ideia: ideia.trim(),
+      ideia: ideiaEfetiva,
       anexos,
       repo: repo ?? undefined,
       pastaLocal: pastaLocal ?? undefined,
@@ -213,7 +259,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
     }
     gravaRascunho('')
     aoConvocar({
-      ideia: ideia.trim(),
+      ideia: ideiaEfetiva,
       provedor,
       modelo: modeloFinal,
       membrosIds: [...selecionados],
@@ -221,20 +267,55 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
       ateConsenso: modoDebate === 'consenso',
       gerarPrompt,
       gerarPlano,
-      demo,
+      demo: demoEfetivo,
       projetoId,
     })
+  }
+
+  // opts permite forçar a ideia e o modo demo (usado pela "reunião de exemplo",
+  // que sempre roda em demo mesmo com API conectada — é só uma amostra).
+  const convocar = (opts?: { ideiaForcada?: string; demoForcado?: boolean }) => {
+    const ideiaEfetiva = (opts?.ideiaForcada ?? ideia).trim()
+    const demoEfetivo = opts?.demoForcado ?? demo
+    // Gate de teto de gasto: SÓ no caminho pago e com preço conhecido. Na prática
+    // só dispara no modo "até consenso" (~muitas chamadas), nunca na 1ª reunião padrão.
+    if (!demoEfetivo) {
+      const chamadasMax = modoDebate === 'consenso' ? chamadas(5) : chamadas(Number(modoDebate))
+      const faixa = estimaCustoUsd({ modelo: modeloFinal, chamadas: chamadasMax, anexos: anexos.length })
+      if (faixa && faixa.max > leTetoGastoUsd()) {
+        setTetoAberto({
+          estimativaTexto: formataFaixaUsd(faixa),
+          prosseguir: () => {
+            setTetoAberto(null)
+            executaConvocacao(ideiaEfetiva, demoEfetivo)
+          },
+        })
+        return
+      }
+    }
+    executaConvocacao(ideiaEfetiva, demoEfetivo)
+  }
+
+  // "Ver reunião de exemplo": pré-preenche uma ideia curada e dispara já em DEMO,
+  // sem exigir digitar nem o mínimo de 10 caracteres. Um clique → payoff.
+  const verExemplo = () => {
+    escreveIdeia(IDEIA_EXEMPLO)
+    convocar({ ideiaForcada: IDEIA_EXEMPLO, demoForcado: true })
   }
 
   return (
     <div className="tela-inicio">
       <section className="hero">
-        <h1>Apresente sua ideia ao conselho</h1>
+        <h1>Um conselho de administração inteiro para a sua ideia — em minutos</h1>
         <p>
-          Doze conselheiros especialistas — finanças, marketing, tecnologia, produto, design,
-          vendas, jurídico e mais — analisam sua ideia, debatem entre si e votam. A Presidente do
-          Conselho consolida tudo em um veredito, um plano detalhado e um prompt pronto para
-          executar.
+          Não é pedir para o ChatGPT "agir como um board": são <strong>13 conselheiros</strong> com
+          vieses próprios que <strong>debatem entre si, mudam de voto</strong> e entregam um veredito,
+          um <strong>plano detalhado em PDF</strong> e um <strong>prompt de execução</strong>. São
+          doze especialistas — finanças, marketing, tecnologia, produto, design, vendas, jurídico e
+          mais — que debatem e votam, mais a Presidente que sintetiza tudo. E cada ideia vira um{' '}
+          <strong>projeto contínuo</strong>: o conselho acompanha reunião após reunião, como o board
+          de uma empresa de verdade — não é análise de uma vez só. Rode <strong>grátis no seu plano
+          do Claude</strong> ou com a API que você preferir.
         </p>
       </section>
 
@@ -252,7 +333,11 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
         </span>
       </label>
 
-      <fieldset className="campo campo-materiais">
+      <details className="disclosure disclosure-materiais">
+        <summary className="disclosure-summary" style={{ cursor: 'pointer', color: 'var(--ouro-claro)', fontWeight: 600, padding: '6px 0' }}>
+          ＋ Adicionar contexto (arquivos, repositório, pasta)
+        </summary>
+        <fieldset className="campo campo-materiais">
         <legend className="campo-rotulo">Materiais de apoio (opcional)</legend>
 
         <div className="linha-anexos">
@@ -272,6 +357,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             tudo junto com a ideia.
           </span>
         </div>
+        <AvisoEgresso provedor={provedor} />
         {anexos.length > 0 && (
           <ul className="lista-anexos">
             {anexos.map((a) => (
@@ -343,6 +429,7 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
                 </div>
               )}
               {erroRepo && <div className="aviso aviso-erro">{erroRepo}</div>}
+              <AvisoEgresso provedor={provedor} />
             </>
           )}
         </div>
@@ -378,14 +465,15 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
               <span className="campo-dica">
                 Tem um projeto <strong>ainda não publicado no GitHub</strong>? Escolha a pasta dele
                 — o navegador lê o código aí mesmo, monta um resumo (árvore, README, trechos) e o
-                conselho analisa. O conteúdo só sai do seu navegador ao ir para o provedor de IA na
-                análise; com <strong>Rodar no Claude Code</strong>, nem isso — fica tudo local.
+                conselho analisa.
               </span>
+              <AvisoEgresso provedor={provedor} />
               {erroPasta && <div className="aviso aviso-erro">{erroPasta}</div>}
             </>
           )}
         </div>
-      </fieldset>
+        </fieldset>
+      </details>
 
       <fieldset className="campo">
         <legend className="campo-rotulo">Conselheiros convocados ({selecionados.size})</legend>
@@ -410,8 +498,37 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
         </span>
       </fieldset>
 
-      <div className="linha-opcoes">
-        {configurado ? (
+      {!configurado && (
+        <div className="campo cartao-conectar">
+          <span className="campo-rotulo">Inteligência artificial</span>
+          <p className="conectar-texto">
+            <strong>Nenhuma API de IA conectada.</strong> Por enquanto a reunião roda em{' '}
+            <em>modo demonstração</em>: respostas simuladas, sem custo, para você conhecer a
+            interface.
+          </p>
+          <button
+            type="button"
+            className="botao-principal botao-conectar"
+            onClick={aoAbrirConfiguracoes}
+          >
+            🔌 Conectar uma API de IA
+          </button>
+          <span className="campo-dica">
+            Funciona com Anthropic, OpenAI ou qualquer API compatível (Ollama local, LM Studio,
+            OpenRouter…). Sua chave fica somente neste navegador.
+          </span>
+        </div>
+      )}
+
+      <details className="disclosure bloco-avancado">
+        <summary
+          className="disclosure-summary"
+          style={{ cursor: 'pointer', color: 'var(--ouro-claro)', fontWeight: 600, padding: '6px 0' }}
+        >
+          ⚙ Opções avançadas — modelo, rodadas de debate, entregáveis
+        </summary>
+        <div className="linha-opcoes">
+        {configurado && (
           <fieldset className="campo campo-metade">
             <legend className="campo-rotulo">
               Modelo · {info.rotulo}{' '}
@@ -464,26 +581,6 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
               />
             )}
           </fieldset>
-        ) : (
-          <div className="campo campo-metade cartao-conectar">
-            <span className="campo-rotulo">Inteligência artificial</span>
-            <p className="conectar-texto">
-              <strong>Nenhuma API de IA conectada.</strong> Por enquanto a reunião roda em{' '}
-              <em>modo demonstração</em>: respostas simuladas, sem custo, para você conhecer a
-              interface.
-            </p>
-            <button
-              type="button"
-              className="botao-principal botao-conectar"
-              onClick={aoAbrirConfiguracoes}
-            >
-              🔌 Conectar uma API de IA
-            </button>
-            <span className="campo-dica">
-              Funciona com Anthropic, OpenAI ou qualquer API compatível (Ollama local, LM Studio,
-              OpenRouter…). Sua chave fica somente neste navegador.
-            </span>
-          </div>
         )}
 
         <div className="campo campo-metade">
@@ -560,33 +657,70 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
             </label>
           )}
         </div>
-      </div>
+        </div>
+      </details>
 
       <div className="acao-convocar">
+        <button
+          type="button"
+          className="botao-ver-exemplo"
+          onClick={verExemplo}
+          title="Roda uma reunião de exemplo já preenchida, em modo demonstração, sem custo"
+          style={{
+            alignSelf: 'stretch',
+            border: '1px solid var(--ouro)',
+            borderRadius: 'var(--raio)',
+            background: 'color-mix(in srgb, var(--ouro) 12%, var(--fundo-2))',
+            color: 'var(--texto)',
+            padding: '12px 18px',
+            fontWeight: 600,
+            fontSize: '1rem',
+          }}
+        >
+          ▶ Ver reunião de exemplo — 1 clique, sem digitar, sem custo
+        </button>
+
         <div className="botoes-convocar">
-          <button className="botao-principal" disabled={!pronto} onClick={convocar}>
-            🔔 Convocar o Conselho
-          </button>
-          <button
-            className="botao-secundario botao-cc"
-            disabled={faltaIdeia}
-            title="Roda o conselho dentro do Claude Code, no seu plano Pro/Max — sem gastar API"
-            onClick={() =>
-              setBriefingCC(
-                promptParaClaudeCode({
-                  ideia: ideia.trim(),
-                  anexos,
-                  repoResumo: repo?.resumo,
-                  repoUrl: repo?.url,
-                  pastaLocal: pastaLocal ?? undefined,
-                  rodadasDebate: modoDebate === 'consenso' ? 1 : Number(modoDebate),
-                  ateConsenso: modoDebate === 'consenso',
-                }),
-              )
-            }
+          <div
+            className="botao-stack"
+            style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}
           >
-            🖥 Rodar no Claude Code
-          </button>
+            <button className="botao-principal" disabled={!pronto} onClick={() => convocar()}>
+              🔔 Convocar o Conselho
+            </button>
+            <small className="selo-custo" style={{ fontSize: '0.75rem', color: 'var(--texto-suave)' }}>
+              {demo ? '🎭 modo demonstração — sem custo' : '🔑 usa sua chave de API'}
+            </small>
+          </div>
+          <div
+            className="botao-stack"
+            style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}
+          >
+            <button
+              className="botao-secundario botao-cc botao-coprimario"
+              disabled={faltaIdeia}
+              title="Roda o conselho dentro do Claude Code, no seu plano Pro/Max — sem gastar API"
+              style={{ borderColor: 'var(--ouro)' }}
+              onClick={() =>
+                setBriefingCC(
+                  promptParaClaudeCode({
+                    ideia: ideia.trim(),
+                    anexos,
+                    repoResumo: repo?.resumo,
+                    repoUrl: repo?.url,
+                    pastaLocal: pastaLocal ?? undefined,
+                    rodadasDebate: modoDebate === 'consenso' ? 1 : Number(modoDebate),
+                    ateConsenso: modoDebate === 'consenso',
+                  }),
+                )
+              }
+            >
+              🖥 Rodar no Claude Code
+            </button>
+            <small className="selo-custo" style={{ fontSize: '0.75rem', color: 'var(--texto-suave)' }}>
+              ✨ grátis no seu plano Pro/Max
+            </small>
+          </div>
         </div>
         {motivoBloqueio ? (
           <span className="motivo-bloqueio">{motivoBloqueio}</span>
@@ -600,6 +734,13 @@ export function IdeaForm({ aoConvocar, aoAbrirConfiguracoes }: Props) {
       </div>
 
       {briefingCC && <ClaudeCodePanel prompt={briefingCC} aoFechar={() => setBriefingCC(null)} />}
+      {tetoAberto && (
+        <ModalTeto
+          estimativaTexto={tetoAberto.estimativaTexto}
+          aoConfirmar={tetoAberto.prosseguir}
+          aoCancelar={() => setTetoAberto(null)}
+        />
+      )}
     </div>
   )
 }

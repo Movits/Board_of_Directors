@@ -1,6 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { Anexo, Transporte, UsoTokens } from '../types'
 
+// A lista de modelos vive em ./modelos (dados puros, sem SDK) para não puxar
+// o @anthropic-ai/sdk para o bundle da home. Re-exportada por compatibilidade.
+export { MODELOS_ANTHROPIC } from './modelos'
+
 /** Timeout por chamada: um provedor travado (local/custom) nunca prende a
  *  reunião para sempre. Combinado com o signal do usuário via AbortSignal.any. */
 const TIMEOUT_CHAMADA_MS = 120_000
@@ -18,12 +22,6 @@ function reportaUso(onUsage: ((u: UsoTokens) => void) | undefined, usage: Anthro
     cache: usage.cache_read_input_tokens ?? undefined,
   })
 }
-
-export const MODELOS_ANTHROPIC = [
-  { id: 'claude-opus-4-8', rotulo: 'Claude Opus 4.8', detalhe: 'máxima qualidade (~US$1–2 por reunião)' },
-  { id: 'claude-sonnet-5', rotulo: 'Claude Sonnet 5', detalhe: 'equilíbrio (~US$0,30–0,60 por reunião)' },
-  { id: 'claude-haiku-4-5', rotulo: 'Claude Haiku 4.5', detalhe: 'rápido e barato (~US$0,10 por reunião)' },
-]
 
 // Thinking adaptativo só é aceito nos modelos 4.6+ (Opus/Sonnet/Fable).
 // Para Haiku e modelos personalizados desconhecidos, omitimos o parâmetro.

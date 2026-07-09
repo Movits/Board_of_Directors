@@ -726,6 +726,128 @@ input:focus {
   align-self: auto;
 }
 
+/* ── Home enxuta (progressive disclosure, exemplo, selos de custo) ──────── */
+
+.carregando-tela {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+/* Blocos colapsáveis "Adicionar contexto" e "Opções avançadas". */
+details.disclosure {
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--fundo-2);
+  padding: 4px 4px;
+}
+details.disclosure > summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  font-weight: 600;
+  color: var(--ouro-claro);
+  list-style: none;
+}
+details.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+details.disclosure[open] > summary {
+  border-bottom: 1px solid var(--borda);
+  margin-bottom: 8px;
+}
+details.disclosure > *:not(summary) {
+  padding: 0 14px 12px;
+}
+
+/* Botão "Ver reunião de exemplo" — payoff em 1 clique. */
+.botao-ver-exemplo {
+  width: 100%;
+  padding: 14px;
+  border: 1px dashed var(--ouro);
+  border-radius: var(--raio);
+  background: rgba(201, 162, 39, 0.06);
+  color: var(--ouro-claro);
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.botao-ver-exemplo:hover {
+  background: rgba(201, 162, 39, 0.12);
+}
+
+/* Par de botões da ação de convocar em coluna, com selos de custo. */
+.botao-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.selo-custo {
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+}
+/* "Rodar no Claude Code" como co-primário (não escondido). */
+.botao-coprimario {
+  border: 1px solid var(--ouro);
+  color: var(--ouro-claro);
+}
+
+/* Aviso de saída de dados, inline junto de cada material de apoio. */
+.aviso-egresso {
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+  font-style: italic;
+}
+
+/* ── Painel do Conselho (analytics local) ──────────────────────────────── */
+
+.painel-conselho {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+.painel-metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+.painel-metrica {
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--fundo-2);
+  padding: 16px;
+}
+.painel-metrica .valor,
+.painel-metrica strong {
+  font-size: 1.6rem;
+  font-family: var(--serif);
+  color: var(--ouro-claro);
+}
+.painel-barra-linha {
+  display: grid;
+  grid-template-columns: 150px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  margin: 4px 0;
+}
+.painel-barra {
+  display: flex;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--fundo-3);
+}
+.painel-diag pre {
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 12px;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 0.78rem;
+}
+
 /* ── Rodar no Claude Code (par de botões + modal do briefing) ──────────── */
 
 .botoes-convocar {

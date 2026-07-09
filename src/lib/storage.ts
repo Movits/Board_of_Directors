@@ -15,6 +15,7 @@ const CHAVES = {
   rascunho: 'bod.rascunhoIdeia',
   projetos: 'bod.projetos',
   githubToken: 'bod.githubToken',
+  tetoGastoUsd: 'bod.tetoGastoUsd',
 } as const
 
 const MAX_HISTORICO = 20
@@ -256,6 +257,23 @@ function migraProjetos(): void {
 export const leGithubToken = (): string => le(CHAVES.githubToken, '')
 export const gravaGithubToken = (v: string): void => {
   grava(CHAVES.githubToken, v)
+}
+
+// ── Teto de gasto por reunião (US$) ──────────────────────────────────────────
+/** Padrão conservador: protege quem está começando de uma reunião cara
+ *  disparada sem querer (ex.: "até consenso" com muitos anexos). */
+const TETO_GASTO_PADRAO = 5.0
+
+/** Teto de gasto por reunião em US$. Só dispara uma confirmação quando a
+ *  estimativa MÁXIMA passa deste valor — nunca bloqueia, apenas avisa.
+ *  Valores inválidos (corrompidos/negativos) caem no padrão. */
+export function leTetoGastoUsd(): number {
+  const bruto = le<number>(CHAVES.tetoGastoUsd, TETO_GASTO_PADRAO)
+  return typeof bruto === 'number' && isFinite(bruto) && bruto >= 0 ? bruto : TETO_GASTO_PADRAO
+}
+
+export function gravaTetoGastoUsd(v: number): void {
+  grava(CHAVES.tetoGastoUsd, v)
 }
 
 // ── Exportação e limpeza dos dados locais (Configurações + tela de erro) ─────

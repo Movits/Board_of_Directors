@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { ConfigReuniao, Projeto, Reuniao } from '../types'
 import { MEMBROS_VOTANTES } from '../board/members'
 import { infoProvedor } from '../api'
+import { estimaCustoUsd, formataFaixaUsd } from '../api/precos'
+import { LINKS_USO_DADOS } from '../api/usoDados'
 import { exportaObsidian } from '../lib/exportar'
 import {
   gravaProjeto,
@@ -12,6 +14,7 @@ import {
   leModeloDe,
   leProjeto,
   leProvedor,
+  leTetoGastoUsd,
 } from '../lib/storage'
 import {
   MAX_ANEXOS,
@@ -24,6 +27,7 @@ import { lerRepositorio, parseRepo } from '../lib/github'
 import { lerPastaLocal } from '../lib/pastaLocal'
 import { promptParaClaudeCode } from '../board/claudeCode'
 import { ClaudeCodePanel } from './ClaudeCodePanel'
+import { ModalTeto } from './ModalTeto'
 
 interface Props {
   projetoId: string
@@ -53,6 +57,9 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
   const [gerarPlano, setGerarPlano] = useState(false)
   const [gerarPrompt, setGerarPrompt] = useState(true)
   const [briefingCC, setBriefingCC] = useState<string | null>(null)
+  // Quando o gate de teto dispara, guardamos aqui o texto da estimativa; o
+  // ModalTeto fica aberto até o usuário confirmar ou cancelar.
+  const [gateTeto, setGateTeto] = useState<string | null>(null)
 
   const provedor = leProvedor()
   const info = infoProvedor(provedor)
@@ -153,11 +160,37 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
       ? 'Há PDF anexado e só o provedor Claude lê PDFs — troque o provedor ou remova o PDF.'
       : null
 
-  const convocarAcompanhamento = () => {
+  // Estimativa de custo do acompanhamento — mesma fórmula da tela inicial:
+  // N análises + N por rodada de debate + síntese + entregáveis.
+  const modeloAtual = leModeloDe(provedor)
+  const entregaveis = (gerarPlano ? 1 : 0) + (gerarPrompt ? 1 : 0)
+  const chamadasCom = (rodadas: number) => MEMBROS_VOTANTES.length * (1 + rodadas) + 1 + entregaveis
+  // Para o gate usamos o PIOR caso: "até consenso" pode ir a 5 rodadas.
+  const rodadasTeto = modoDebate === 'consenso' ? 5 : Number(modoDebate)
+  const anexosPesados = projeto.anexos.filter((a) => a.tipo !== 'texto').length
+  const estimativaCusto = estimaCustoUsd({
+    modelo: modeloAtual,
+    chamadas: chamadasCom(rodadasTeto),
+    anexos: anexosPesados,
+  })
+
+  // Link para a política de uso de dados do provedor (aviso de egresso, #17).
+  // Shape assumido do outro agente: Record<Provedor, string | { url }>; acesso
+  // defensivo para não quebrar se a forma final vier diferente.
+  const linkUsoDados = ((): string => {
+    const v = (LINKS_USO_DADOS as unknown as Record<string, unknown> | undefined)?.[provedor]
+    if (typeof v === 'string') return v
+    if (v && typeof v === 'object' && typeof (v as { url?: unknown }).url === 'string') {
+      return (v as { url: string }).url
+    }
+    return ''
+  })()
+
+  const enviaConvocacao = () => {
     aoConvocar({
       ideia: projeto.ideia,
       provedor,
-      modelo: leModeloDe(provedor),
+      modelo: modeloAtual,
       membrosIds: MEMBROS_VOTANTES.map((m) => m.id),
       rodadasDebate: modoDebate === 'consenso' ? 1 : Number(modoDebate),
       ateConsenso: modoDebate === 'consenso',
@@ -169,6 +202,15 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
     })
   }
 
+  const convocarAcompanhamento = () => {
+    // Gate de teto (#24): só em reunião paga e quando o PIOR caso passa do teto.
+    if (!demo && estimativaCusto && estimativaCusto.max > leTetoGastoUsd()) {
+      setGateTeto(formataFaixaUsd(estimativaCusto))
+      return
+    }
+    enviaConvocacao()
+  }
+
   return (
     <div className="tela-projeto">
       <button className="link link-sutil" onClick={aoVoltar}>
@@ -178,6 +220,11 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
       <p className="projeto-meta">
         Criado em {new Date(projeto.criadoEm).toLocaleDateString('pt-BR')} ·{' '}
         {reunioes.length} reuni{reunioes.length === 1 ? 'ão' : 'ões'} do conselho
+      </p>
+      <p className="campo-dica">
+        🔄 A equipe acompanha este projeto <strong>reunião após reunião</strong>: cada
+        acompanhamento parte da ideia, dos materiais e da decisão da última reunião — como um
+        conselho que se reúne de novo para levar o projeto adiante.
       </p>
 
       <section className="cartao-config">
@@ -309,6 +356,22 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
           )}
         </div>
         {erro && <div className="aviso aviso-erro">{erro}</div>}
+        <p className="campo-dica">
+          🔒 Anexos, repositório e pasta ficam no seu navegador. Numa reunião <strong>paga</strong>,
+          o conteúdo é enviado ao provedor de IA ({info.rotulo}) apenas para a análise — nunca a
+          outros servidores. Com <strong>🖥 Rodar no Claude Code</strong>, nem isso: fica tudo
+          local.
+          {linkUsoDados && (
+            <>
+              {' '}
+              Veja como {info.rotulo} trata os dados:{' '}
+              <a href={linkUsoDados} target="_blank" rel="noreferrer">
+                política de uso de dados
+              </a>
+              .
+            </>
+          )}
+        </p>
       </section>
 
       <section className="cartao-config">
@@ -417,13 +480,22 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
 
         <div className="acao-convocar">
           <div className="botoes-convocar">
-            <button className="botao-principal" disabled={motivoBloqueio !== null} onClick={convocarAcompanhamento}>
+            <button
+              className="botao-principal"
+              disabled={motivoBloqueio !== null}
+              title={
+                demo
+                  ? 'Modo demonstração: reunião simulada, sem custo.'
+                  : 'Usa a sua chave de API — o consumo é cobrado pelo provedor.'
+              }
+              onClick={convocarAcompanhamento}
+            >
               🔔 Convocar acompanhamento
             </button>
             <button
               className="botao-secundario botao-cc"
               disabled={pautaCurta}
-              title="Roda o acompanhamento dentro do Claude Code, no seu plano — sem gastar API"
+              title="Roda o acompanhamento dentro do Claude Code, no seu plano Pro/Max — sem gastar API"
               onClick={() =>
                 setBriefingCC(
                   promptParaClaudeCode({
@@ -439,7 +511,7 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
                 )
               }
             >
-              🖥 Rodar no Claude Code
+              🖥 Rodar no Claude Code — grátis no seu plano
             </button>
           </div>
           {motivoBloqueio ? (
@@ -448,13 +520,33 @@ export function ProjectPage({ projetoId, aoAbrirReuniao, aoConvocar, aoVoltar }:
             <span className="estimativa-chamadas">
               {demo
                 ? 'Sem API conectada: a reunião rodará em modo demonstração (simulada, sem custo).'
-                : `Todos os 12 conselheiros participam, com ${info.rotulo} (${leModeloDe(provedor)}).`}
+                : `Todos os 12 conselheiros participam, com ${info.rotulo} (${modeloAtual}).` +
+                  (estimativaCusto
+                    ? ` Estimativa: ${formataFaixaUsd(estimativaCusto)}${
+                        modoDebate === 'consenso' ? ' no pior caso (até 5 rodadas)' : ''
+                      }.`
+                    : '')}
             </span>
           )}
+          <span className="campo-dica">
+            🔔 <strong>Convocar</strong>{' '}
+            {demo ? 'roda em modo demonstração, sem custo' : 'usa a sua chave de API'} · 🖥{' '}
+            <strong>Rodar no Claude Code</strong> é grátis no seu plano Pro/Max.
+          </span>
         </div>
       </section>
 
       {briefingCC && <ClaudeCodePanel prompt={briefingCC} aoFechar={() => setBriefingCC(null)} />}
+      {gateTeto && (
+        <ModalTeto
+          estimativaTexto={gateTeto}
+          aoConfirmar={() => {
+            setGateTeto(null)
+            enviaConvocacao()
+          }}
+          aoCancelar={() => setGateTeto(null)}
+        />
+      )}
     </div>
   )
 }

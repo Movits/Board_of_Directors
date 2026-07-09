@@ -14,6 +14,8 @@ import {
   leModelosDescobertos,
   lePersonas,
   leProvedor,
+  leTetoGastoUsd,
+  gravaTetoGastoUsd,
   limpaChaves,
   limpaTudo,
 } from '../lib/storage'
@@ -30,6 +32,7 @@ export function Settings() {
   const [buscando, setBuscando] = useState(false)
   const [erroBusca, setErroBusca] = useState('')
   const [aberto, setAberto] = useState<string | null>(null)
+  const [teto, setTeto] = useState(() => String(leTetoGastoUsd()))
   const [salvo, setSalvo] = useState(false)
   // força rerender quando uma persona é salva/restaurada dentro do PersonaForm
   const [, setVersaoPersonas] = useState(0)
@@ -61,6 +64,14 @@ export function Settings() {
     if (!confirmado) return
     limpaChaves()
     setChave('')
+    confirmaSalvo()
+  }
+
+  const salvarTeto = () => {
+    const n = Number(teto.replace(',', '.'))
+    const valido = isFinite(n) && n >= 0 ? n : leTetoGastoUsd()
+    gravaTetoGastoUsd(valido)
+    setTeto(String(valido))
     confirmaSalvo()
   }
 
@@ -323,6 +334,39 @@ export function Settings() {
           O modelo padrão selecionado aqui aparece na tela inicial — onde também dá para trocar por
           reunião.
         </p>
+      </section>
+
+      <section className="cartao-config">
+        <h2>💰 Teto de gasto por reunião</h2>
+        <p>
+          Um limite de custo estimado por reunião. Quando a estimativa <strong>máxima</strong> de
+          uma reunião paga passar deste valor, o app pede uma confirmação antes de convocar — nunca
+          bloqueia. Ajuda sobretudo no modo <strong>🤝 até consenso</strong>, que pode render várias
+          rodadas e encarecer a conta.
+        </p>
+        <label className="campo campo-base-url">
+          <span className="campo-rotulo">Teto de gasto por reunião (US$)</span>
+          <div className="linha-chave">
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              inputMode="decimal"
+              value={teto}
+              onChange={(e) => setTeto(e.target.value)}
+              onBlur={salvarTeto}
+              aria-label="Teto de gasto por reunião em dólares"
+            />
+            <button className="botao-principal botao-compacto" onClick={salvarTeto}>
+              Salvar
+            </button>
+          </div>
+          <span className="campo-dica">
+            A confirmação só aparece em reuniões <strong>pagas</strong> (com API conectada). O modo
+            demonstração e o <strong>🖥 Rodar no Claude Code</strong> são sempre gratuitos e não
+            contam. Padrão: US$ 5,00.
+          </span>
+        </label>
       </section>
 
       <section className="cartao-config">

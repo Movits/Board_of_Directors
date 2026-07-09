@@ -156,10 +156,12 @@ export function MeetingRoom({
   )
 
   // Transporte (real ou demo) — reusado pela reunião e pelas regenerações.
-  const montaTransporte = () =>
+  // O provedor real carrega o SDK sob demanda (import dinâmico), por isso async;
+  // o demo é síncrono e não puxa SDK (mantém a amostra instantânea).
+  const montaTransporte = async () =>
     config.demo
       ? criaTransporteDemo()
-      : criaTransporte(config.provedor, {
+      : await criaTransporte(config.provedor, {
           apiKey: leChave(config.provedor),
           modelo: config.modelo,
           baseUrl: config.provedor === 'anthropic' ? undefined : leBaseUrlDe(config.provedor),
@@ -171,9 +173,10 @@ export function MeetingRoom({
 
     const abort = new AbortController()
     abortRef.current = abort
-    const transporte = montaTransporte()
 
-    conduzirReuniao({
+    montaTransporte().then((transporte) => {
+      if (abort.signal.aborted) return
+      conduzirReuniao({
       config,
       transporte,
       personas: montaPersonas(),
@@ -242,6 +245,15 @@ export function MeetingRoom({
         },
         onErro: (mensagem) => setEstado((e) => ({ ...e, erro: mensagem })),
       },
+      })
+    }).catch((err) => {
+      // Falha ao carregar o SDK do provedor (import dinâmico) ou ao montar o transporte.
+      if (abort.signal.aborted) return
+      setEstado((e) => ({
+        ...e,
+        fase: 'erro',
+        erro: err instanceof Error ? err.message : String(err),
+      }))
     })
 
     return () => {
@@ -263,7 +275,7 @@ export function MeetingRoom({
   /** Regenera a síntese quando ela falhou — as análises e o debate já estavam
    *  salvos, então aqui só refazemos o veredito (e os entregáveis, se pedidos). */
   const regerarSintese = async () => {
-    const transporte = montaTransporte()
+    const transporte = await montaTransporte()
     const personas = montaPersonas()
     const participantes = participantesComAnalise()
     const ctxSintese: ContextoSintese = {
@@ -323,7 +335,7 @@ export function MeetingRoom({
 
   /** Refaz só a chamada do entregável que falhou e atualiza a reunião salva. */
   const regerarEntregavel = async (tipo: 'plano' | 'prompt') => {
-    const transporte = montaTransporte()
+    const transporte = await montaTransporte()
     const ctxRegerar: ContextoEntregavel = {
       config,
       transporte,

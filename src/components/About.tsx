@@ -8,8 +8,9 @@ export function About() {
         <h2>🏛️ O que é este app</h2>
         <p>
           O <strong>Board of Directors</strong> é um conselho de administração simulado por IA:
-          treze conselheiros com expertises diferentes analisam sua ideia, debatem, votam e
-          entregam um veredito, um plano detalhado e um prompt de execução.{' '}
+          são <strong>13 conselheiros</strong> — doze especialistas com expertises diferentes que
+          analisam sua ideia, debatem entre si e votam, mais a Presidente do Conselho, que sintetiza
+          tudo em um veredito, um plano detalhado e um prompt de execução.{' '}
           <strong>O conselho decide, mas não executa nada</strong> — quem age a partir das
           recomendações é você.
         </p>

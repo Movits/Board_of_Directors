@@ -1,12 +1,9 @@
 import type { Provedor, Transporte } from '../types'
-import { MODELOS_ANTHROPIC, criaTransporteAnthropic } from './anthropic'
-import { MODELOS_OPENAI, criaTransporteOpenai, listaModelosOpenai } from './openai'
+// Só DADOS aqui (sem SDK): os SDKs entram por import() dinâmico em criaTransporte
+// e listaModelos, para não pesarem no bundle da home/demo.
+import { MODELOS_ANTHROPIC, MODELOS_OPENAI, type InfoModelo } from './modelos'
 
-export interface InfoModelo {
-  id: string
-  rotulo: string
-  detalhe: string
-}
+export type { InfoModelo }
 
 export interface InfoProvedor {
   id: Provedor
@@ -65,35 +62,33 @@ export function infoProvedor(id: Provedor): InfoProvedor {
   return PROVEDORES.find((p) => p.id === id) ?? PROVEDORES[0]
 }
 
-export function criaTransporte(
+/** Cria o transporte do provedor — carrega o SDK sob demanda (import dinâmico),
+ *  então o bundle inicial (home + demo) não inclui @anthropic-ai/sdk nem openai. */
+export async function criaTransporte(
   provedor: Provedor,
   opts: { apiKey: string; modelo: string; baseUrl?: string },
-): Transporte {
-  if (provedor === 'custom') {
-    return criaTransporteOpenai({
-      apiKey: opts.apiKey,
-      modelo: opts.modelo,
-      baseUrl: opts.baseUrl || undefined,
-      compat: true,
-    })
+): Promise<Transporte> {
+  if (provedor === 'anthropic') {
+    const { criaTransporteAnthropic } = await import('./anthropic')
+    return criaTransporteAnthropic(opts.apiKey, opts.modelo)
   }
-  if (provedor === 'openai') {
-    return criaTransporteOpenai({
-      apiKey: opts.apiKey,
-      modelo: opts.modelo,
-      baseUrl: opts.baseUrl || undefined,
-    })
-  }
-  return criaTransporteAnthropic(opts.apiKey, opts.modelo)
+  const { criaTransporteOpenai } = await import('./openai')
+  return criaTransporteOpenai({
+    apiKey: opts.apiKey,
+    modelo: opts.modelo,
+    baseUrl: opts.baseUrl || undefined,
+    compat: provedor === 'custom',
+  })
 }
 
 /** Lista os modelos disponíveis na API configurada (para OpenAI e compatíveis). */
-export function listaModelos(
+export async function listaModelos(
   provedor: Provedor,
   opts: { apiKey: string; baseUrl?: string },
 ): Promise<string[]> {
   if (provedor === 'anthropic') {
-    return Promise.reject(new Error('Use a lista de modelos Claude embutida.'))
+    throw new Error('Use a lista de modelos Claude embutida.')
   }
+  const { listaModelosOpenai } = await import('./openai')
   return listaModelosOpenai(opts.apiKey, opts.baseUrl || undefined)
 }
