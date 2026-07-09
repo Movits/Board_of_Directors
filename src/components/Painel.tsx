@@ -75,18 +75,23 @@ function mostraPct(v: number | null): string {
   return v === null ? '—' : `${v}%`
 }
 
-/** Percorre o localStorage já salvo e deriva TODAS as métricas. Read-only. */
+/** Percorre o localStorage já salvo e deriva TODAS as métricas. Read-only.
+ *  Exclui reuniões de DEMONSTRAÇÃO: os votos do demo são simulados/aleatórios;
+ *  incluí-los faria o Painel apresentar ruído como se fosse o histórico real. */
 function calculaMetricas(): Metricas {
-  const historico = leHistorico()
-  const projetos = leProjetos()
+  const historico = leHistorico().filter((r) => !r.config.demo)
+  const idsReais = new Set(historico.map((r) => r.id))
+  // Projetos "reais": os que têm ao menos uma reunião não-demo.
+  const projetos = leProjetos().filter((p) => p.reunioesIds.some((id) => idsReais.has(id)))
 
-  // Reuniões que pertencem a um projeto com ≥2 reuniões (acompanhamento).
+  // Reuniões que pertencem a um projeto com ≥2 reuniões REAIS (acompanhamento).
   const idsEmProjetoRetido = new Set<string>()
   let projetosRetidos = 0
   for (const p of projetos) {
-    if (p.reunioesIds.length >= 2) {
+    const reaisNoProjeto = p.reunioesIds.filter((id) => idsReais.has(id))
+    if (reaisNoProjeto.length >= 2) {
       projetosRetidos++
-      for (const rid of p.reunioesIds) idsEmProjetoRetido.add(rid)
+      for (const rid of reaisNoProjeto) idsEmProjetoRetido.add(rid)
     }
   }
 

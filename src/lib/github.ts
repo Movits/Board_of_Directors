@@ -56,9 +56,24 @@ export const SEGREDOS = new RegExp(
   'i',
 )
 
-/** Fichas de API com prefixo reconhecível (OpenAI/Anthropic, AWS, GitHub, Slack). */
-const FICHA_OBVIA =
-  /\b(sk-[A-Za-z0-9_-]{8,}|AKIA[A-Z0-9]{16}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,})/g
+/** Fichas de API com prefixo reconhecível (OpenAI/Anthropic, Stripe, AWS,
+ *  GitHub, GitLab, Google, Slack) — mesmo soltas, sem nome de chave à frente. */
+const FICHA_OBVIA = new RegExp(
+  [
+    'sk-[A-Za-z0-9_-]{8,}', // OpenAI/Anthropic
+    'sk_(?:live|test)_[A-Za-z0-9]{10,}', // Stripe secreta
+    'rk_(?:live|test)_[A-Za-z0-9]{10,}', // Stripe restrita
+    'whsec_[A-Za-z0-9]{10,}', // Stripe webhook
+    'AKIA[A-Z0-9]{16}', // AWS access key id
+    'ghp_[A-Za-z0-9]{20,}', // GitHub PAT clássico
+    'github_pat_[A-Za-z0-9_]{20,}', // GitHub fine-grained PAT
+    'glpat-[A-Za-z0-9_-]{20,}', // GitLab PAT
+    'AIza[0-9A-Za-z_-]{35}', // Google API key
+    'xox[baprs]-[A-Za-z0-9-]{10,}', // Slack
+    'xapp-[A-Za-z0-9-]{10,}', // Slack app-level
+  ].join('|'),
+  'g',
+)
 
 /** Blocos PEM de chave privada (inclusive truncados no fim do texto). */
 const BLOCO_CHAVE_PRIVADA =

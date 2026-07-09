@@ -319,8 +319,14 @@ export function MeetingRoom({
           setEstado((e) => ({ ...e, erroPrompt: err instanceof Error ? err.message : String(err) }))
         }
       }
-      if (reuniao) gravaReuniao(reuniao)
-      setEstado((e) => ({ ...e, reuniao: reuniao ?? e.reuniao, regerando: undefined, erroSintese: undefined }))
+      const falhouSalvar = reuniao ? !gravaReuniao(reuniao) : false
+      setEstado((e) => ({
+        ...e,
+        reuniao: reuniao ?? e.reuniao,
+        regerando: undefined,
+        erroSintese: undefined,
+        falhouSalvar,
+      }))
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setEstado((e) => ({ ...e, erroSintese: msg, regerando: undefined }))
@@ -356,19 +362,20 @@ export function MeetingRoom({
       if (tipo === 'plano') {
         const plano = await gerarPlano(ctxRegerar)
         const reuniao = estado.reuniao ? { ...estado.reuniao, plano } : undefined
-        if (reuniao) gravaReuniao(reuniao)
-        setEstado((e) => ({ ...e, plano, reuniao: reuniao ?? e.reuniao, regerando: undefined }))
+        const falhouSalvar = reuniao ? !gravaReuniao(reuniao) : false
+        setEstado((e) => ({ ...e, plano, reuniao: reuniao ?? e.reuniao, regerando: undefined, falhouSalvar }))
       } else {
         const promptExecucao = await gerarPromptExecucao(ctxRegerar, (t) =>
           setEstado((e) => ({ ...e, promptExecucao: e.promptExecucao + t })),
         )
         const reuniao = estado.reuniao ? { ...estado.reuniao, promptExecucao } : undefined
-        if (reuniao) gravaReuniao(reuniao)
+        const falhouSalvar = reuniao ? !gravaReuniao(reuniao) : false
         setEstado((e) => ({
           ...e,
           promptExecucao,
           reuniao: reuniao ?? e.reuniao,
           regerando: undefined,
+          falhouSalvar,
         }))
       }
     } catch (err) {
